@@ -7,32 +7,27 @@ import { StarsCanvas } from "@/components/ui/stars-canvas"
 const sourceUrl = `${import.meta.env.BASE_URL}spark-badge.html?v=${Date.now()}`
 
 function App() {
-  const [countdown, setCountdown] = useState<number | null>(null)
+  const [countdown, setCountdown] = useState(5)
   const [galleryOpen, setGalleryOpen] = useState(false)
 
   useEffect(() => {
-    const startCountdown = () => {
-      if (galleryOpen) return
-      setCountdown((value) => value ?? 5)
+    const openGallery = () => setGalleryOpen(true)
+    const receiveIframeClick = (event: MessageEvent) => {
+      if (event.data?.type === "spark-badge-enter") openGallery()
     }
-    const receiveIframeInput = (event: MessageEvent) => {
-      if (event.data?.type === "spark-badge-enter") startCountdown()
-    }
-    window.addEventListener("keydown", startCountdown)
-    window.addEventListener("pointerdown", startCountdown)
-    window.addEventListener("message", receiveIframeInput)
+    window.addEventListener("pointerdown", openGallery)
+    window.addEventListener("message", receiveIframeClick)
     return () => {
-      window.removeEventListener("keydown", startCountdown)
-      window.removeEventListener("pointerdown", startCountdown)
-      window.removeEventListener("message", receiveIframeInput)
+      window.removeEventListener("pointerdown", openGallery)
+      window.removeEventListener("message", receiveIframeClick)
     }
-  }, [galleryOpen])
+  }, [])
 
   useEffect(() => {
-    if (countdown === null || galleryOpen) return
+    if (galleryOpen) return
     const timer = window.setTimeout(() => {
       if (countdown <= 1) setGalleryOpen(true)
-      else setCountdown((value) => (value === null ? null : value - 1))
+      else setCountdown((value) => value - 1)
     }, 850)
     return () => window.clearTimeout(timer)
   }, [countdown, galleryOpen])
@@ -46,8 +41,8 @@ function App() {
         className="relative z-[1] block h-full w-full overflow-hidden [&_.spark-badge__frame]:h-full [&_.spark-badge__frame]:w-full [&_.spark-badge__frame]:border-0 [&_.spark-badge__frame]:opacity-0 [&_.spark-badge__frame.is-ready]:opacity-100 [&_.spark-badge__frame]:transition-opacity"
       />
       {!galleryOpen && (
-        <p className={`pointer-events-none fixed inset-x-0 bottom-5 z-10 text-center font-mono text-[10px] font-medium tracking-[0.26em] transition-all duration-200 sm:bottom-7 sm:text-xs ${countdown === null ? "animate-pulse text-white/80" : "scale-110 text-blue-300 drop-shadow-[0_0_10px_rgba(96,165,250,0.9)]"}`}>
-          PRESS ANY KEY{countdown === null ? "" : ` · ${countdown}`}
+        <p className="pointer-events-none fixed inset-x-0 bottom-5 z-10 animate-pulse text-center font-mono text-[10px] font-medium tracking-[0.26em] text-white sm:bottom-7 sm:text-xs">
+          CLICK TO ENTER · {countdown}
         </p>
       )}
     </main>

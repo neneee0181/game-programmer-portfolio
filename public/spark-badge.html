@@ -549,7 +549,6 @@ const requestEntry = () => {
   if (parent !== window) parent.postMessage({ type: 'spark-badge-enter' }, '*');
 };
 addEventListener('pointerdown', requestEntry);
-addEventListener('keydown', requestEntry);
 
 const mk = n => ({
   x: new Float32Array(n), y: new Float32Array(n),
