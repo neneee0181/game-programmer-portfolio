@@ -114,7 +114,8 @@ const EMPH = {
   card:   [1.95, 0.55], slot: [2.00, 0.20],
   rule:   [1.05, 0.15], word: [1.75, 0.17], edition: [1.80, 0.18],
   window: [1.70, 0.16], meta: [1.15, 0.15], name: [2.10, 0.18],
-  tier:   [1.85, 0.17], qr:   [1.45, 0.20]
+  tier:   [1.85, 0.17], qr:   [1.45, 0.20],
+  korean: [2.80, 0.08], prompt: [2.55, 0.08]
 };
 const B = 78;
 const W2G = k => { const e = EMPH[k];
@@ -219,6 +220,42 @@ function buildMasks(){
     gm.beginPath(); gm.arc(x*S,y*S,r*S,0,TAU); gm.fill();
     ge.fillStyle = W2G(k); ge.strokeStyle = W2G(k); ge.lineWidth = 0.017*S;
     ge.beginPath(); ge.arc(x*S,y*S,r*S,0,TAU); ge.fill(); ge.stroke();
+  };
+  const cutText = (text, x, y, size, k, weight = 700) => {
+    both(c => {
+      c.save();
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+      c.font = weight + ' ' + (size*S) + 'px Arial, sans-serif';
+      c.lineWidth = Math.max(1.5, size*S*0.075);
+      c.strokeText(text, x*S, y*S);
+      c.restore();
+    });
+    ge.save();
+    ge.textAlign = 'center';
+    ge.textBaseline = 'middle';
+    ge.font = weight + ' ' + (size*S) + 'px Arial, sans-serif';
+    ge.strokeStyle = W2G(k);
+    ge.lineWidth = Math.max(1.5, size*S*0.115);
+    ge.strokeText(text, x*S, y*S);
+    ge.restore();
+  };
+  const inkText = (text, x, y, size, k, weight = 600) => {
+    gm.save();
+    gm.globalCompositeOperation = 'source-over';
+    gm.fillStyle = '#fff';
+    gm.textAlign = 'center';
+    gm.textBaseline = 'middle';
+    gm.font = weight + ' ' + (size*S) + 'px Arial, sans-serif';
+    gm.fillText(text, x*S, y*S);
+    gm.restore();
+    ge.save();
+    ge.fillStyle = W2G(k);
+    ge.textAlign = 'center';
+    ge.textBaseline = 'middle';
+    ge.font = weight + ' ' + (size*S) + 'px Arial, sans-serif';
+    ge.fillText(text, x*S, y*S);
+    ge.restore();
   };
 
   if (sceneVariant === 'browser') {
@@ -382,47 +419,11 @@ function buildMasks(){
     }
   })();
 
-  /* ---- the window carries the Codex wordmark. Small type dissolves at
-         ember scale, so the letters use a compact authored single-line
-         alphabet with enough room to stay legible through the particle pass. ---- */
-  const GLYPH_WIDTHS = { C: 0.52, o: 0.44, d: 0.48, e: 0.44, x: 0.42 };
-  const glyph = (ch, x, y, h) => {
-    const w = h * GLYPH_WIDTHS[ch];
-    ge.strokeStyle = W2G('edition');
-    both(c => {
-      c.beginPath();
-      if (ch === 'C') {
-        c.moveTo(x+w*0.91, y+h*0.14);
-        c.bezierCurveTo(x+w*0.72, y-h*0.01, x+w*0.22, y-h*0.02, x+w*0.10, y+h*0.49);
-        c.bezierCurveTo(x+w*0.00, y+h*0.94, x+w*0.55, y+h*1.10, x+w*0.93, y+h*0.84);
-      } else if (ch === 'o') {
-        c.ellipse(x+w*0.50, y+h*0.63, w*0.43, h*0.35, 0, 0, TAU);
-      } else if (ch === 'd') {
-        c.ellipse(x+w*0.42, y+h*0.64, w*0.35, h*0.34, 0, 0, TAU);
-        c.moveTo(x+w*0.77, y);
-        c.lineTo(x+w*0.77, y+h*0.98);
-      } else if (ch === 'e') {
-        c.moveTo(x+w*0.91, y+h*0.62);
-        c.lineTo(x+w*0.10, y+h*0.62);
-        c.bezierCurveTo(x+w*0.13, y+h*0.25, x+w*0.84, y+h*0.18, x+w*0.88, y+h*0.57);
-        c.bezierCurveTo(x+w*0.94, y+h*0.94, x+w*0.32, y+h*1.08, x+w*0.12, y+h*0.82);
-      } else if (ch === 'x') {
-        c.moveTo(x+w*0.08, y+h*0.30);
-        c.lineTo(x+w*0.92, y+h*0.98);
-        c.moveTo(x+w*0.92, y+h*0.30);
-        c.lineTo(x+w*0.08, y+h*0.98);
-      }
-      c.stroke();
-    });
-    return w;
-  };
-  (() => {
-    const str = 'Codex', h = 0.087*S, gap = h*0.11, cx = 0.500*S, cy = 0.512*S;
-    let tot = 0; for (const ch of str) tot += h*GLYPH_WIDTHS[ch] + gap; tot -= gap;
-    gm.lineWidth = 0.0068*S; ge.lineWidth = 0.019*S;
-    let x = cx - tot/2; const y = cy - h/2;
-    for (const ch of str) x += glyph(ch, x, y, h) + gap;
-  })();
+  /* ---- application title and the entry prompt are carved from the same
+         credential mask, so both reform from the authored spark field. ---- */
+  cutText('넥토리얼', 0.500, 0.486, 0.060, 'korean');
+  cutText('지원',     0.500, 0.552, 0.060, 'korean');
+  inkText('PRESS ANY KEY / CLICK', 0.473, 0.669, 0.0105, 'prompt', 600);
 
   gm.restore(); ge.restore();
   gm.globalCompositeOperation = 'source-over';
