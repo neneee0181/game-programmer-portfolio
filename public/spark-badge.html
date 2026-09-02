@@ -519,11 +519,7 @@ function applyParticleCounts(){
 addEventListener('message', event => {
   if (!event.data) return;
   if (event.data.type === 'spark-badge-variant' && event.data.variant === 'gallery' && sceneVariant !== 'gallery') {
-    sceneVariant = 'gallery';
-    MASKS = buildMasks();
-    EM = buildEmitters(MASKS.detail, MASKS.emph);
-    OCC_PIXELS = MASKS.occ.getContext('2d').getImageData(0, 0, MW, MH).data;
-    layout(); prewarm();
+    startGalleryMorph();
     return;
   }
   if (event.data.type === 'spark-badge-step') {
@@ -549,6 +545,12 @@ addEventListener('message', event => {
   reflectControls();
 });
 
+const requestEntry = () => {
+  if (parent !== window) parent.postMessage({ type: 'spark-badge-enter' }, '*');
+};
+addEventListener('pointerdown', requestEntry);
+addEventListener('keydown', requestEntry);
+
 const mk = n => ({
   x: new Float32Array(n), y: new Float32Array(n),
   nx: new Float32Array(n), ny: new Float32Array(n),   // heading of the tick
@@ -561,10 +563,12 @@ const mk = n => ({
   pin: new Float32Array(n),                           // 0 = plumes freely, 1 = held on the contour
   age: new Float32Array(n),                           // seconds since spawn (rain fade-in)
   inside: new Uint8Array(n),                          // front-meteor crossing state
+  tx: new Float32Array(n), ty: new Float32Array(n),   // target points during a scene morph
   k: new Uint8Array(n)
 });
 const FUR = mk(CAP_F), RAIN = mk(CAP_R), WAT = mk(CAP_W);
 const IMPACTS = [];
+let MORPH = null;
 
 const pickStyle = () => { const r = rnd(); return r < 0.46 ? 0 : (r < 0.78 ? 1 : 2); };
 const stepsFor = (len, lo, hi) => Math.max(lo, Math.min(hi, Math.round(len/(SEG*ART.s))));
@@ -585,6 +589,7 @@ function spawnFur(i, seeded){
   const j = 0.0032 * ART.s;
   FUR.x[i] = ART.x + EM.x[e]*ART.s + (rnd()-0.5)*j;
   FUR.y[i] = ART.y + EM.y[e]*ART.s + (rnd()-0.5)*j;
+  FUR.tx[i] = FUR.x[i]; FUR.ty[i] = FUR.y[i];
   const em = EM.e[e], eb = Math.sqrt(em), dr = EM.dr[e];
   // pin = how strongly this edge holds its embers in place. A pinned ember
   // barely moves and lies along the contour tangent, so successive marks chain
@@ -609,6 +614,44 @@ function spawnFur(i, seeded){
   FUR.seed[i] = rnd()*1000;
   FUR.style[i] = pickStyle();
   FUR.life[i] = seeded ? rnd()*FUR.max[i] : FUR.max[i];
+}
+
+function startGalleryMorph(){
+  if (MORPH || sceneVariant === 'gallery') return;
+  const previousVariant = sceneVariant;
+  sceneVariant = 'gallery';
+  const nextMasks = buildMasks();
+  const nextEmitters = buildEmitters(nextMasks.detail, nextMasks.emph);
+  sceneVariant = previousVariant;
+  const jitter = 0.0035 * ART.s;
+  for (let i = 0; i < NF; i++){
+    const e = nextEmitters.pick();
+    FUR.tx[i] = ART.x + nextEmitters.x[e]*ART.s + (rnd()-0.5)*jitter;
+    FUR.ty[i] = ART.y + nextEmitters.y[e]*ART.s + (rnd()-0.5)*jitter;
+    // Keep the existing ember visible while it travels.  Life must remain
+    // within its own max range or the strand envelope intentionally hides it.
+    FUR.life[i] = FUR.max[i] * 0.55;
+  }
+  MORPH = { elapsed: 0, duration: 2.35, masks: nextMasks, emitters: nextEmitters };
+}
+
+function stepMorph(d){
+  if (!MORPH) return;
+  MORPH.elapsed += d;
+  const p = Math.min(1, MORPH.elapsed / MORPH.duration);
+  const pull = 1 - Math.exp(-d * (1.8 + p*5.8));
+  for (let i = 0; i < NF; i++){
+    const dx = FUR.tx[i] - FUR.x[i], dy = FUR.ty[i] - FUR.y[i];
+    FUR.x[i] += dx * pull; FUR.y[i] += dy * pull;
+    const m = Math.hypot(dx, dy) || 1;
+    FUR.nx[i] = dx/m; FUR.ny[i] = dy/m;
+    FUR.life[i] = Math.max(FUR.life[i], 0.12);
+  }
+  if (p < 1) return;
+  sceneVariant = 'gallery';
+  MASKS = MORPH.masks; EM = MORPH.emitters;
+  OCC_PIXELS = MASKS.occ.getContext('2d').getImageData(0, 0, MW, MH).data;
+  MORPH = null;
 }
 // Sparse, long streaks travel across the star field like a meteor shower.
 function spawnRain(i, seeded){
@@ -815,6 +858,7 @@ function stepRain(d){
   }
 }
 function stepFur(d){
+  if (MORPH) return;
   for (let i = 0; i < NF; i++){
     FUR.life[i] -= d;
     if (FUR.life[i] <= 0){ spawnFur(i, false); continue; }
@@ -906,7 +950,7 @@ function frame(ts){
   cycle();
 
   const d = dt * rate;
-  stepRain(d); stepFur(d); stepWater(d); stepImpacts(d);
+  stepRain(d); stepMorph(d); stepFur(d); stepWater(d); stepImpacts(d);
   render();
 
   // adaptive load governor

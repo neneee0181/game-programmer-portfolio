@@ -12,16 +12,21 @@ function App() {
 
   useEffect(() => {
     const startCountdown = () => {
-      if (galleryOpen || countdown !== null) return
-      setCountdown(5)
+      if (galleryOpen) return
+      setCountdown((value) => value ?? 5)
+    }
+    const receiveIframeInput = (event: MessageEvent) => {
+      if (event.data?.type === "spark-badge-enter") startCountdown()
     }
     window.addEventListener("keydown", startCountdown)
     window.addEventListener("pointerdown", startCountdown)
+    window.addEventListener("message", receiveIframeInput)
     return () => {
       window.removeEventListener("keydown", startCountdown)
       window.removeEventListener("pointerdown", startCountdown)
+      window.removeEventListener("message", receiveIframeInput)
     }
-  }, [countdown, galleryOpen])
+  }, [galleryOpen])
 
   useEffect(() => {
     if (countdown === null || galleryOpen) return
