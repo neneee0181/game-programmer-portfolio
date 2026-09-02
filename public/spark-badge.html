@@ -472,6 +472,7 @@ const WIND = { x: Math.cos(WANG), y: Math.sin(WANG) };
 
 const MASKS = buildMasks();
 const EM = buildEmitters(MASKS.detail, MASKS.emph);
+const OCC_PIXELS = MASKS.occ.getContext('2d').getImageData(0, 0, MW, MH).data;
 
 /* ---- strand pools ----
    A spark is a moving particle drawn as its own motion blur: a short tick
@@ -530,9 +531,11 @@ const mk = n => ({
   vx: new Float32Array(n), vy: new Float32Array(n),   // rain velocity
   pin: new Float32Array(n),                           // 0 = plumes freely, 1 = held on the contour
   age: new Float32Array(n),                           // seconds since spawn (rain fade-in)
+  inside: new Uint8Array(n),                          // front-meteor crossing state
   k: new Uint8Array(n)
 });
 const FUR = mk(CAP_F), RAIN = mk(CAP_R), WAT = mk(CAP_W);
+const IMPACTS = [];
 
 const pickStyle = () => { const r = rnd(); return r < 0.46 ? 0 : (r < 0.78 ? 1 : 2); };
 const stepsFor = (len, lo, hi) => Math.max(lo, Math.min(hi, Math.round(len/(SEG*ART.s))));
@@ -599,6 +602,30 @@ function spawnRain(i, seeded){
     RAIN.y[i] = -RAIN.len[i]*WIND.y - rnd()*ART.s*0.25;
   }
   RAIN.age[i] = 0;
+  RAIN.inside[i] = 0;
+}
+
+function onCredential(x, y){
+  const mx = Math.floor((x - ART.x) / ART.s * MW);
+  const my = Math.floor((y - (ART.y + AY0*ART.s)) / ART.s * MW);
+  return mx >= 0 && mx < MW && my >= 0 && my < MH && OCC_PIXELS[(my*MW + mx)*4 + 3] > 20;
+}
+
+function addImpact(x, y){
+  for (let i = 0; i < 5; i++){
+    const a = Math.PI + (rnd()-0.5)*1.7;
+    const speed = ART.s * (0.055 + rnd()*0.070);
+    const life = 0.16 + rnd()*0.16;
+    IMPACTS.push({ x, y, vx: Math.cos(a)*speed, vy: Math.sin(a)*speed, life, max: life });
+  }
+}
+
+function stepImpacts(d){
+  for (let i = IMPACTS.length - 1; i >= 0; i--){
+    const p = IMPACTS[i];
+    p.life -= d; p.x += p.vx*d; p.y += p.vy*d; p.vy += ART.s*0.08*d;
+    if (p.life <= 0) IMPACTS.splice(i, 1);
+  }
 }
 function waveAt(x){                                    // swell along the waterline
   curlSample(F2, x/ART.s*0.55 + CT*0.02, 0.31, _cv);
@@ -750,6 +777,9 @@ function stepRain(d){
   for (let i = 0; i < NR; i++){
     RAIN.age[i] += d;
     RAIN.x[i] += RAIN.vx[i]*d; RAIN.y[i] += RAIN.vy[i]*d;
+    const inside = RAIN.pin[i] && onCredential(RAIN.x[i], RAIN.y[i]);
+    if (inside && !RAIN.inside[i]) addImpact(RAIN.x[i], RAIN.y[i]);
+    RAIN.inside[i] = inside ? 1 : 0;
     // the streak trails back up-wind, so the tail is the last thing to leave
     const ty = RAIN.y[i] - RAIN.len[i]*WIND.y, tx = RAIN.x[i] - RAIN.len[i]*WIND.x;
     if (ty > VH || tx > VW) spawnRain(i, false);
@@ -789,7 +819,7 @@ function cycle(){                                      // slow dissolve / reform
 // frame is a bare outline. Run the sim forward before anything is painted.
 function prewarm(){
   const d = 1/30;                                     // ~1s of sim: past the longest ember life
-  for (let n = 0; n < 30; n++){ CT += d; stepRain(d); stepFur(d); stepWater(d); }
+  for (let n = 0; n < 30; n++){ CT += d; stepRain(d); stepFur(d); stepWater(d); stepImpacts(d); }
   cycle();
 }
 
@@ -800,7 +830,7 @@ function render(){
   // rain behind the figure first, so the silhouette can be punched out of it
   for (let i = 0; i < NB; i++) paths[i] = new Path2D();
   for (let i = 0; i < NR; i++) if (!RAIN.pin[i]) strand(RAIN, i, 1);
-  flush();
+  flush('#c5dcff');
 
   ctx.save();
   ctx.globalCompositeOperation = 'destination-out';
@@ -812,12 +842,29 @@ function render(){
   for (let i = 0; i < NB; i++) paths[i] = new Path2D();
   for (let i = 0; i < NF; i++) strand(FUR, i, 0);
   for (let i = 0; i < NW; i++) strand(WAT, i, 2);
-  flush();
+  flush('#fff');
 
   // and the rest in front, so falling lines cross the figure too
   for (let i = 0; i < NB; i++) paths[i] = new Path2D();
   for (let i = 0; i < NR; i++) if (RAIN.pin[i]) strand(RAIN, i, 1);
-  flush();
+  flush('#d6e7ff');
+  drawImpacts();
+}
+
+function drawImpacts(){
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.strokeStyle = '#69aaff';
+  ctx.lineWidth = LW * 1.15;
+  ctx.lineCap = 'round';
+  for (const p of IMPACTS){
+    ctx.globalAlpha = Math.max(0, p.life / p.max) * 0.85;
+    ctx.beginPath();
+    ctx.moveTo(p.x - p.vx*0.035, p.y - p.vy*0.035);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 
 function frame(ts){
@@ -830,7 +877,7 @@ function frame(ts){
   cycle();
 
   const d = dt * rate;
-  stepRain(d); stepFur(d); stepWater(d);
+  stepRain(d); stepFur(d); stepWater(d); stepImpacts(d);
   render();
 
   // adaptive load governor
@@ -842,9 +889,9 @@ function frame(ts){
   }
 }
 
-function flush(){
+function flush(color = '#fff'){
   ctx.globalCompositeOperation = 'lighter';           // sparks accumulate; dense edges burn to white
-  ctx.strokeStyle = '#fff';
+  ctx.strokeStyle = color;
   ctx.lineWidth = LW;
   ctx.lineCap = 'butt';
   for (let s = 0; s < DASHES.length; s++){
