@@ -651,7 +651,10 @@ function stepMorph(d){
   if (!MORPH) return;
   MORPH.elapsed += d;
   const p = Math.min(1, MORPH.elapsed / MORPH.duration);
-  const pull = 1 - Math.exp(-d * (1.8 + p*5.8));
+  // Once the gallery silhouette is recognizable, ease off the target pull so
+  // its own ember motion is already alive before the morph finishes.
+  const pullRate = p < 0.60 ? 1.8 + p*5.8 : 2.2;
+  const pull = 1 - Math.exp(-d * pullRate);
   for (let i = 0; i < NF; i++){
     const dx = FUR.tx[i] - FUR.x[i], dy = FUR.ty[i] - FUR.y[i];
     FUR.x[i] += dx * pull; FUR.y[i] += dy * pull;
@@ -695,9 +698,19 @@ function onCredential(x, y){
   return mx >= 0 && mx < MW && my >= 0 && my < MH && OCC_PIXELS[(my*MW + mx)*4 + 3] > 20;
 }
 
-function addImpact(x, y){
+function credentialOutwardNormal(x, y){
+  const mx = Math.floor((x - ART.x) / ART.s * MW);
+  const my = Math.floor((y - (ART.y + AY0*ART.s)) / ART.s * MW);
+  const alphaAt = (px, py) => (px < 0 || px >= MW || py < 0 || py >= MH) ? 0 : OCC_PIXELS[(py*MW + px)*4 + 3];
+  const gx = alphaAt(mx+1, my) - alphaAt(mx-1, my);
+  const gy = alphaAt(mx, my+1) - alphaAt(mx, my-1);
+  const m = Math.hypot(gx, gy);
+  return m > 1 ? { x: -gx/m, y: -gy/m } : { x: -WIND.x, y: -WIND.y };
+}
+
+function addImpact(x, y, normal){
   for (let i = 0; i < 11; i++){
-    const a = Math.PI + (rnd()-0.5)*1.7;
+    const a = Math.atan2(normal.y, normal.x) + (rnd()-0.5)*1.25;
     const speed = ART.s * (0.090 + rnd()*0.110);
     const life = 0.38 + rnd()*0.24;
     IMPACTS.push({ x, y, vx: Math.cos(a)*speed, vy: Math.sin(a)*speed, life, max: life });
@@ -862,7 +875,7 @@ function stepRain(d){
     RAIN.age[i] += d;
     RAIN.x[i] += RAIN.vx[i]*d; RAIN.y[i] += RAIN.vy[i]*d;
     const inside = RAIN.pin[i] && onCredential(RAIN.x[i], RAIN.y[i]);
-    if (inside && !RAIN.inside[i]) addImpact(RAIN.x[i], RAIN.y[i]);
+    if (inside && !RAIN.inside[i]) addImpact(RAIN.x[i], RAIN.y[i], credentialOutwardNormal(RAIN.x[i], RAIN.y[i]));
     RAIN.inside[i] = inside ? 1 : 0;
     // the streak trails back up-wind, so the tail is the last thing to leave
     const ty = RAIN.y[i] - RAIN.len[i]*WIND.y, tx = RAIN.x[i] - RAIN.len[i]*WIND.x;
@@ -870,10 +883,15 @@ function stepRain(d){
   }
 }
 function stepFur(d){
-  if (MORPH) return;
+  const morphProgress = MORPH ? Math.min(1, MORPH.elapsed / MORPH.duration) : 1;
+  if (MORPH && morphProgress < 0.60) return;
+  const motionMix = MORPH ? 0.34 + (morphProgress - 0.60) / 0.40 * 0.66 : 1;
   for (let i = 0; i < NF; i++){
-    FUR.life[i] -= d;
-    if (FUR.life[i] <= 0){ spawnFur(i, false); continue; }
+    FUR.life[i] -= d * motionMix;
+    if (FUR.life[i] <= 0){
+      if (MORPH) FUR.life[i] = FUR.max[i] * 0.65;
+      else { spawnFur(i, false); continue; }
+    }
     const age = 1 - FUR.life[i]/FUR.max[i];
     const pin = FUR.pin[i], free = 1 - pin;
     curlAt((FUR.x[i]-ART.x)/ART.s, (FUR.y[i]-ART.y)/ART.s, cur);
@@ -882,7 +900,7 @@ function stepFur(d){
     let dx = FUR.rx[i]*rad + WIND.x*0.50*free + cur[0]*c;
     let dy = FUR.ry[i]*rad + WIND.y*0.50*free + cur[1]*c;
     const m = Math.hypot(dx, dy) || 1; dx /= m; dy /= m;
-    FUR.x[i] += dx*FUR.spd[i]*d; FUR.y[i] += dy*FUR.spd[i]*d;
+    FUR.x[i] += dx*FUR.spd[i]*d*motionMix; FUR.y[i] += dy*FUR.spd[i]*d*motionMix;
     FUR.nx[i] = dx; FUR.ny[i] = dy;                 // the tick lies along the motion
   }
 }
