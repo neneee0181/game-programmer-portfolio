@@ -1,8 +1,8 @@
 import { SparkBadge } from "@/components/ui/spark-badge"
 
-// Keep the independently loaded iframe from reusing an older GitHub Pages/CDN
-// response after the authored scene changes.
-const sourceUrl = `${import.meta.env.BASE_URL}spark-badge.html?v=20260902-0615`
+// The scene is served as an independent iframe. A per-page-load token prevents
+// GitHub Pages/CDN from showing a stale scene after an authored HTML update.
+const sourceUrl = `${import.meta.env.BASE_URL}spark-badge.html?v=${Date.now()}`
 
 function App() {
   return (
