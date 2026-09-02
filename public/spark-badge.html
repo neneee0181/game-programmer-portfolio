@@ -650,6 +650,9 @@ function stepMorph(d){
   sceneVariant = 'gallery';
   MASKS = MORPH.masks; EM = MORPH.emitters;
   OCC_PIXELS = MASKS.occ.getContext('2d').getImageData(0, 0, MW, MH).data;
+  // Re-seed the arrived particles with the gallery's own motion vectors at
+  // varied ages. This avoids a static settling frame before the new cards move.
+  for (let i = 0; i < NF; i++) spawnFur(i, true);
   MORPH = null;
 }
 // Sparse, long streaks travel across the star field like a meteor shower.
