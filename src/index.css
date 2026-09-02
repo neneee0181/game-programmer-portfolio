@@ -18,3 +18,12 @@
     @apply bg-background text-foreground; }
   html {
     @apply font-sans; } }
+
+.spark-page { min-height: 100vh; background: #08090d !important; color: #eceeea !important; }
+.spark-page * { box-sizing: border-box; }
+
+.spark-badge__frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
