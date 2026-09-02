@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { SPARK_BADGE_MARKUP } from "./spark-badge-utils/spark-badge-markup";
 
-export type SparkBadgeVariant = "badge";
+export type SparkBadgeVariant = "badge" | "gallery";
 export type SparkBadgeProps = {
   className?: string;
   sourceUrl?: string;
   variant?: SparkBadgeVariant;
 };
 
-export function SparkBadge({ className = "", sourceUrl }: SparkBadgeProps) {
+export function SparkBadge({ className = "", sourceUrl, variant = "badge" }: SparkBadgeProps) {
   const hostRef = useRef<HTMLDivElement>(null);
+  const frameRef = useRef<HTMLIFrameElement>(null);
   const intersectsRef = useRef(true);
   const [mounted, setMounted] = useState(true);
   const [ready, setReady] = useState(false);
@@ -40,15 +41,24 @@ export function SparkBadge({ className = "", sourceUrl }: SparkBadgeProps) {
     if (!mounted) setReady(false);
   }, [mounted]);
 
+  useEffect(() => {
+    if (!ready) return;
+    frameRef.current?.contentWindow?.postMessage(
+      { type: "spark-badge-variant", variant },
+      "*",
+    );
+  }, [ready, variant]);
+
   return (
     <div
       ref={hostRef}
       className={`spark-badge${className ? ` ${className}` : ""}`}
       data-state={!mounted ? "paused" : ready ? "ready" : "loading"}
-      data-variant="badge"
+      data-variant={variant}
     >
       {mounted ? (
         <iframe
+          ref={frameRef}
           className={`spark-badge__frame${ready ? " is-ready" : ""}`}
           title="Animated credential badge in rain"
           {...(sourceUrl ? { src: sourceUrl } : { srcDoc: SPARK_BADGE_MARKUP })}
