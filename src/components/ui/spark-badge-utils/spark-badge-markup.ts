@@ -1,28 +1,52 @@
 export const SPARK_BADGE_MARKUP = String.raw`<!doctype html>
-<html lang="en">
+<html lang="ko">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <style>
       html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #000; }
-      canvas { display: block; width: 100%; height: 100%; background: #000; }
+      canvas { display: block; width: 100%; height: 100%; background: #000; cursor: pointer; }
     </style>
   </head>
   <body>
-    <canvas id="rain-card"></canvas>
+    <canvas id="nexterial-card"></canvas>
     <script>
-      const canvas = document.getElementById("rain-card");
+      const canvas = document.getElementById("nexterial-card");
       const ctx = canvas.getContext("2d");
-      let width = 0, height = 0, dpr = 1, drops = [];
-      const rand = (min, max) => min + Math.random() * (max - min);
+      const rain = [];
+      const splash = [];
+      const cardDust = [];
+      const rand = (a, b) => a + Math.random() * (b - a);
+      let width = 0, height = 0, dpr = 1, card;
 
-      function resetDrop(drop, initial) {
-        drop.x = rand(-width * .2, width * 1.15);
-        drop.y = initial ? rand(-height, height) : rand(-height * .35, -12);
-        drop.length = rand(10, 42);
-        drop.speed = rand(5.5, 13);
-        drop.alpha = rand(.14, .74);
-        drop.lineWidth = Math.random() > .84 ? 1.15 : .55;
+      function resetDrop(drop, initial = false) {
+        drop.x = rand(-width * .1, width * 1.1);
+        drop.y = initial ? rand(-height, height) : rand(-height * .22, -14);
+        drop.length = rand(14, 34);
+        drop.speed = rand(1.35, 3.15);
+        drop.alpha = rand(.16, .72);
+        drop.weight = Math.random() > .86 ? 1.25 : .55;
+      }
+
+      function makeCardDust() {
+        cardDust.length = 0;
+        const addEdge = (x1, y1, x2, y2, amount) => {
+          for (let i = 0; i < amount; i++) {
+            const t = Math.random();
+            cardDust.push({
+              x: x1 + (x2 - x1) * t + rand(-2, 2),
+              y: y1 + (y2 - y1) * t + rand(-2, 2),
+              size: rand(.5, 2.4),
+              angle: rand(-.55, .55),
+              alpha: rand(.25, .96),
+              phase: rand(0, Math.PI * 2),
+            });
+          }
+        };
+        addEdge(card.left, card.top, card.right, card.top, 250);
+        addEdge(card.right, card.top, card.right, card.bottom, 350);
+        addEdge(card.right, card.bottom, card.left, card.bottom, 250);
+        addEdge(card.left, card.bottom, card.left, card.top, 350);
       }
 
       function resize() {
@@ -32,100 +56,134 @@ export const SPARK_BADGE_MARKUP = String.raw`<!doctype html>
         canvas.width = Math.round(width * dpr);
         canvas.height = Math.round(height * dpr);
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        drops = Array.from({ length: Math.max(88, Math.round(width * .32)) }, () => {
+        const cardWidth = Math.min(width * .39, height * .43);
+        const cardHeight = Math.min(height * .72, cardWidth * 1.42);
+        card = {
+          left: (width - cardWidth) * .5,
+          right: (width + cardWidth) * .5,
+          top: (height - cardHeight) * .5,
+          bottom: (height + cardHeight) * .5,
+        };
+        rain.length = 0;
+        for (let i = 0; i < Math.max(120, Math.round(width * .19)); i++) {
           const drop = {};
           resetDrop(drop, true);
-          return drop;
-        });
+          rain.push(drop);
+        }
+        makeCardDust();
       }
 
-      function grainLine(x1, y1, x2, y2, density = 1) {
-        const dx = x2 - x1, dy = y2 - y1;
-        const length = Math.hypot(dx, dy);
-        const count = Math.max(18, Math.round(length * density * .55));
-        ctx.lineCap = "round";
+      function addSplash(x, y, normalX, normalY) {
+        const count = Math.floor(rand(4, 8));
         for (let i = 0; i < count; i++) {
-          const t = Math.random();
-          const jitter = rand(-2.4, 2.4);
-          const px = x1 + dx * t + jitter;
-          const py = y1 + dy * t + jitter;
-          const angle = Math.atan2(dy, dx) + rand(-.6, .6);
-          const fragment = rand(1.4, 6.5);
-          ctx.globalAlpha = rand(.24, .92);
+          const outward = rand(1.4, 3.7);
+          splash.push({
+            x, y,
+            vx: normalX * outward + rand(-1.7, 1.7),
+            vy: normalY * outward + rand(-1.4, .5),
+            life: rand(12, 25),
+            maxLife: 25,
+            size: rand(.45, 1.3),
+          });
+        }
+      }
+
+      function hitCard(drop, nextX, nextY) {
+        const dx = nextX - drop.x;
+        const dy = nextY - drop.y;
+        const hits = [
+          { x: card.left, y1: card.top, y2: card.bottom, nx: -1, ny: 0 },
+          { x: card.right, y1: card.top, y2: card.bottom, nx: 1, ny: 0 },
+          { y: card.top, x1: card.left, x2: card.right, nx: 0, ny: -1 },
+          { y: card.bottom, x1: card.left, x2: card.right, nx: 0, ny: 1 },
+        ];
+        for (const edge of hits) {
+          if (edge.x !== undefined && dx !== 0) {
+            const t = (edge.x - drop.x) / dx;
+            const y = drop.y + dy * t;
+            if (t >= 0 && t <= 1 && y >= edge.y1 && y <= edge.y2) {
+              addSplash(edge.x, y, edge.nx, edge.ny);
+              resetDrop(drop);
+              return true;
+            }
+          }
+          if (edge.y !== undefined && dy !== 0) {
+            const t = (edge.y - drop.y) / dy;
+            const x = drop.x + dx * t;
+            if (t >= 0 && t <= 1 && x >= edge.x1 && x <= edge.x2) {
+              addSplash(x, edge.y, edge.nx, edge.ny);
+              resetDrop(drop);
+              return true;
+            }
+          }
+        }
+        return false;
+      }
+
+      function drawRain() {
+        ctx.lineCap = "round";
+        for (const drop of rain) {
+          const nextX = drop.x - drop.speed * .33;
+          const nextY = drop.y + drop.speed;
+          ctx.globalAlpha = drop.alpha;
           ctx.strokeStyle = "#fff";
-          ctx.lineWidth = rand(.38, 1.2);
+          ctx.lineWidth = drop.weight;
           ctx.beginPath();
-          ctx.moveTo(px, py);
-          ctx.lineTo(px + Math.cos(angle) * fragment, py + Math.sin(angle) * fragment);
+          ctx.moveTo(drop.x, drop.y);
+          ctx.lineTo(drop.x - drop.length * .33, drop.y + drop.length);
+          ctx.stroke();
+          if (!hitCard(drop, nextX, nextY)) {
+            drop.x = nextX;
+            drop.y = nextY;
+            if (drop.y > height + 40 || drop.x < -60) resetDrop(drop);
+          }
+        }
+      }
+
+      function drawDust(now) {
+        ctx.lineCap = "round";
+        for (const grain of cardDust) {
+          const flicker = .65 + Math.sin(now * .002 + grain.phase) * .25;
+          ctx.globalAlpha = grain.alpha * flicker;
+          ctx.strokeStyle = "#fff";
+          ctx.lineWidth = grain.size;
+          ctx.beginPath();
+          ctx.moveTo(grain.x, grain.y);
+          ctx.lineTo(grain.x + Math.cos(grain.angle) * grain.size * 3, grain.y + Math.sin(grain.angle) * grain.size * 3);
           ctx.stroke();
         }
       }
 
-      function edge(x1, y1, x2, y2, density = 1) {
-        for (let pass = 0; pass < 4; pass++) {
-          grainLine(
-            x1 + rand(-1.6, 1.6), y1 + rand(-1.6, 1.6),
-            x2 + rand(-1.6, 1.6), y2 + rand(-1.6, 1.6),
-            density
-          );
+      function drawSplashes() {
+        for (let i = splash.length - 1; i >= 0; i--) {
+          const particle = splash[i];
+          particle.x += particle.vx;
+          particle.y += particle.vy;
+          particle.vy += .055;
+          particle.life -= 1;
+          if (particle.life <= 0) {
+            splash.splice(i, 1);
+            continue;
+          }
+          ctx.globalAlpha = (particle.life / particle.maxLife) * .9;
+          ctx.strokeStyle = "#fff";
+          ctx.lineWidth = particle.size;
+          ctx.beginPath();
+          ctx.moveTo(particle.x, particle.y);
+          ctx.lineTo(particle.x - particle.vx * 1.7, particle.y - particle.vy * 1.7);
+          ctx.stroke();
         }
       }
 
-      function label(text, x, y, size, weight = 500, align = "left") {
+      function drawMark() {
+        const size = Math.max(9, Math.min(width, height) * .0105);
         ctx.save();
-        ctx.textAlign = align;
-        ctx.textBaseline = "middle";
-        ctx.font = weight + " " + size + "px ui-monospace, SFMono-Regular, Menlo, monospace";
-        for (let pass = 0; pass < 3; pass++) {
-          ctx.globalAlpha = .18;
-          ctx.fillStyle = "#fff";
-          ctx.fillText(text, x + rand(-1, 1), y + rand(-1, 1));
-        }
-        ctx.globalAlpha = .78;
-        ctx.fillText(text, x, y);
-        ctx.restore();
-      }
-
-      function drawBadge(now) {
-        const unit = Math.min(width / 560, height / 680);
-        const cardW = 340 * unit;
-        const cardH = 480 * unit;
-        const cx = width * .5;
-        const cy = height * .52;
-        const left = -cardW / 2, top = -cardH / 2;
-        const right = cardW / 2, bottom = cardH / 2;
-
-        ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(-.045);
-        edge(left, top, right, top, 1.35);
-        edge(right, top, right, bottom, 1.35);
-        edge(right, bottom, left, bottom, 1.35);
-        edge(left, bottom, left, top, 1.35);
-
-        const pad = 30 * unit;
-        edge(left + pad, top + 72 * unit, right - pad, top + 72 * unit, .85);
-        edge(left + pad, bottom - 83 * unit, right - pad, bottom - 83 * unit, .85);
-        edge(0, top + 92 * unit, 0, bottom - 102 * unit, .65);
-
-        edge(left + pad, top + 28 * unit, left + 95 * unit, top + 28 * unit, .8);
-        label("YB//", left + pad, top + 34 * unit, 12 * unit, 700);
-        label("PORTFOLIO ACCESS", right - pad, top + 34 * unit, 9 * unit, 600, "right");
-
-        label("YOUNG", left + pad, top + 120 * unit, 30 * unit, 800);
-        label("BIN", left + pad, top + 158 * unit, 30 * unit, 800);
-        label("GAME CLIENT", left + pad, top + 199 * unit, 10 * unit, 700);
-        label("PROGRAMMER", left + pad, top + 216 * unit, 10 * unit, 700);
-
-        edge(left + pad, top + 249 * unit, right - pad, top + 249 * unit, .7);
-        label("SELECTED PROJECTS", left + pad, top + 277 * unit, 9 * unit, 600);
-        label("03", right - pad, top + 277 * unit, 12 * unit, 700, "right");
-        label("KARTRIDER  /  INVERSUS  /  RE:ADAPT", left + pad, top + 304 * unit, 8 * unit, 500);
-
-        edge(left + pad, bottom - 52 * unit, left + 112 * unit, bottom - 52 * unit, .8);
-        edge(right - 112 * unit, bottom - 52 * unit, right - pad, bottom - 52 * unit, .8);
-        label("OPEN FILE", left + pad, bottom - 30 * unit, 9 * unit, 700);
-        label("NEXON / 2026", right - pad, bottom - 30 * unit, 9 * unit, 700, "right");
+        ctx.globalAlpha = .58;
+        ctx.fillStyle = "#fff";
+        ctx.font = "600 " + size + "px ui-monospace, SFMono-Regular, Menlo, monospace";
+        ctx.textAlign = "center";
+        ctx.letterSpacing = "0.2em";
+        ctx.fillText("NEXTERIAL APPLICATION", width * .5, card.bottom - size * 2.4);
         ctx.restore();
       }
 
@@ -133,21 +191,10 @@ export const SPARK_BADGE_MARKUP = String.raw`<!doctype html>
         ctx.globalAlpha = 1;
         ctx.fillStyle = "#000";
         ctx.fillRect(0, 0, width, height);
-
-        for (const drop of drops) {
-          ctx.globalAlpha = drop.alpha;
-          ctx.strokeStyle = "#fff";
-          ctx.lineWidth = drop.lineWidth;
-          ctx.beginPath();
-          ctx.moveTo(drop.x, drop.y);
-          ctx.lineTo(drop.x - drop.length * .42, drop.y + drop.length);
-          ctx.stroke();
-          drop.x -= drop.speed * .33;
-          drop.y += drop.speed;
-          if (drop.y > height + 42 || drop.x < -72) resetDrop(drop, false);
-        }
-
-        drawBadge(now);
+        drawRain();
+        drawDust(now);
+        drawSplashes();
+        drawMark();
         requestAnimationFrame(frame);
       }
 
