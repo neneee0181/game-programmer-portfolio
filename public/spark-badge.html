@@ -644,7 +644,9 @@ function startGalleryMorph(){
     // within its own max range or the strand envelope intentionally hides it.
     FUR.life[i] = FUR.max[i] * 0.55;
   }
-  MORPH = { elapsed: 0, duration: 2.35, masks: nextMasks, emitters: nextEmitters };
+  // Old-card impacts must not survive into the new gallery transition.
+  IMPACTS.length = 0;
+  MORPH = { elapsed: 0, duration: 2.35, masks: nextMasks, emitters: nextEmitters, maskSwapped: false };
 }
 
 function stepMorph(d){
@@ -662,10 +664,17 @@ function stepMorph(d){
     FUR.nx[i] = dx/m; FUR.ny[i] = dy/m;
     FUR.life[i] = Math.max(FUR.life[i], 0.12);
   }
+  // At this point the particle cloud already reads as three cards. Swap the
+  // occlusion/collision surface now, not at the end, so no old-card spark can
+  // appear while the gallery is visible.
+  if (p >= 0.60 && !MORPH.maskSwapped){
+    sceneVariant = 'gallery';
+    MASKS = MORPH.masks; EM = MORPH.emitters;
+    OCC_PIXELS = MASKS.occ.getContext('2d').getImageData(0, 0, MW, MH).data;
+    IMPACTS.length = 0;
+    MORPH.maskSwapped = true;
+  }
   if (p < 1) return;
-  sceneVariant = 'gallery';
-  MASKS = MORPH.masks; EM = MORPH.emitters;
-  OCC_PIXELS = MASKS.occ.getContext('2d').getImageData(0, 0, MW, MH).data;
   MORPH = null;
 }
 // Sparse, long streaks travel across the star field like a meteor shower.
@@ -875,7 +884,7 @@ function stepRain(d){
     RAIN.age[i] += d;
     RAIN.x[i] += RAIN.vx[i]*d; RAIN.y[i] += RAIN.vy[i]*d;
     const inside = RAIN.pin[i] && onCredential(RAIN.x[i], RAIN.y[i]);
-    if (inside && !RAIN.inside[i]) addImpact(RAIN.x[i], RAIN.y[i], credentialOutwardNormal(RAIN.x[i], RAIN.y[i]));
+    if (!MORPH && inside && !RAIN.inside[i]) addImpact(RAIN.x[i], RAIN.y[i], credentialOutwardNormal(RAIN.x[i], RAIN.y[i]));
     RAIN.inside[i] = inside ? 1 : 0;
     // the streak trails back up-wind, so the tail is the last thing to leave
     const ty = RAIN.y[i] - RAIN.len[i]*WIND.y, tx = RAIN.x[i] - RAIN.len[i]*WIND.x;
