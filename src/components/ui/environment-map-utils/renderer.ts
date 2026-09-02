@@ -84,8 +84,8 @@ function makeCloudTexture() {
   if (!context) return new THREE.CanvasTexture(cloudCanvas)
   for (const [x, y, radius] of [[112, 126, 72], [194, 95, 95], [294, 102, 110], [384, 132, 68]] as const) {
     const cloud = context.createRadialGradient(x, y, radius * 0.08, x, y, radius)
-    cloud.addColorStop(0, "rgba(255,255,255,0.62)")
-    cloud.addColorStop(0.45, "rgba(255,255,255,0.35)")
+    cloud.addColorStop(0, "rgba(255,255,255,0.9)")
+    cloud.addColorStop(0.45, "rgba(255,255,255,0.62)")
     cloud.addColorStop(1, "rgba(255,255,255,0)")
     context.fillStyle = cloud
     context.beginPath()
@@ -94,6 +94,29 @@ function makeCloudTexture() {
   }
   const texture = new THREE.CanvasTexture(cloudCanvas)
   texture.colorSpace = THREE.SRGBColorSpace
+  return texture
+}
+
+function makeCheckerTexture() {
+  const gridCanvas = document.createElement("canvas")
+  gridCanvas.width = 512
+  gridCanvas.height = 512
+  const context = gridCanvas.getContext("2d")
+  if (!context) return new THREE.CanvasTexture(gridCanvas)
+  const cells = 8
+  const cellSize = gridCanvas.width / cells
+  for (let x = 0; x < cells; x += 1) {
+    for (let y = 0; y < cells; y += 1) {
+      context.fillStyle = (x + y) % 2 === 0 ? "#88a0b5" : "#4e667f"
+      context.fillRect(x * cellSize, y * cellSize, cellSize, cellSize)
+    }
+  }
+  const texture = new THREE.CanvasTexture(gridCanvas)
+  texture.colorSpace = THREE.SRGBColorSpace
+  texture.wrapS = THREE.RepeatWrapping
+  texture.wrapT = THREE.RepeatWrapping
+  texture.repeat.set(17, 17)
+  texture.anisotropy = 8
   return texture
 }
 
@@ -121,7 +144,7 @@ export function createRenderer({ canvas, onFaceSelect }: RendererOptions) {
   horizon.position.set(0, 8, -38)
   scene.add(horizon)
   const cloudTexture = makeCloudTexture()
-  const cloudMaterial = new THREE.SpriteMaterial({ map: cloudTexture, transparent: true, opacity: 0.55, depthWrite: false, fog: false })
+  const cloudMaterial = new THREE.SpriteMaterial({ map: cloudTexture, transparent: true, opacity: 0.78, depthWrite: false, fog: false })
   const clouds = [
     [-10, 3.4, -13, 8, 3.2], [-3, 5.2, -17, 10, 3.6], [5.5, 3.8, -15, 8.8, 3], [13, 5.7, -22, 12, 4],
   ].map(([x, y, z, width, height]) => {
@@ -141,14 +164,15 @@ export function createRenderer({ canvas, onFaceSelect }: RendererOptions) {
   sunGlow.position.copy(sun.position)
   sunGlow.scale.set(5, 3.2, 1)
   scene.add(sunGlow)
+  const checkerTexture = makeCheckerTexture()
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(140, 140),
-    new THREE.MeshStandardMaterial({ color: "#526b82", roughness: 0.95, metalness: 0.02 }),
+    new THREE.MeshStandardMaterial({ map: checkerTexture, color: "#8fa7ba", roughness: 0.98, metalness: 0 }),
   )
   ground.rotation.x = -Math.PI / 2
   ground.position.y = -2.8
   scene.add(ground)
-  const grid = new THREE.GridHelper(130, 90, "#7f9db4", "#5c778f")
+  const grid = new THREE.GridHelper(130, 34, "#9bb5c9", "#6c849b")
   grid.position.y = -2.77
   grid.material.transparent = true
   grid.material.opacity = 0.78
@@ -179,6 +203,8 @@ export function createRenderer({ canvas, onFaceSelect }: RendererOptions) {
   let startY = 0
   let targetX = cube.rotation.x
   let targetY = cube.rotation.y
+  const clock = new THREE.Clock()
+  const cloudStartX = clouds.map((cloud) => cloud.position.x)
 
   const resize = () => {
     const { width, height } = canvas.getBoundingClientRect()
@@ -234,9 +260,17 @@ export function createRenderer({ canvas, onFaceSelect }: RendererOptions) {
   const render = () => {
     if (disposed) return
     frame = requestAnimationFrame(render)
+    const elapsed = clock.getElapsedTime()
     if (!dragging) targetY += 0.0016
     cube.rotation.x += (targetX - cube.rotation.x) * 0.08
     cube.rotation.y += (targetY - cube.rotation.y) * 0.08
+    sun.position.x = 8.2 + Math.sin(elapsed * 0.14) * 3.5
+    sun.position.y = 3.6 + Math.cos(elapsed * 0.14) * 0.72
+    sunGlow.position.copy(sun.position)
+    clouds.forEach((cloud, index) => {
+      cloud.position.x = cloudStartX[index] + ((elapsed * (0.14 + index * 0.02)) % 22)
+      if (cloud.position.x > 15) cloud.position.x -= 28
+    })
     camera.lookAt(0, -0.35, 0)
     renderer.render(scene, camera)
   }
@@ -263,6 +297,7 @@ export function createRenderer({ canvas, onFaceSelect }: RendererOptions) {
       ;(horizon.material as THREE.Material).dispose()
       ground.geometry.dispose()
       ;(ground.material as THREE.Material).dispose()
+      checkerTexture.dispose()
       ;(grid.material as THREE.Material).dispose()
       sun.geometry.dispose()
       ;(sun.material as THREE.Material).dispose()
