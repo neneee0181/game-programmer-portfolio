@@ -833,11 +833,36 @@ function render(){
   for (let i = 0; i < NF; i++) strand(FUR, i, 0);
   for (let i = 0; i < NW; i++) strand(WAT, i, 2);
   flush();
+  drawApplicationCopy();
 
   // and the rest in front, so falling lines cross the figure too
   for (let i = 0; i < NB; i++) paths[i] = new Path2D();
   for (let i = 0; i < NR; i++) if (RAIN.pin[i]) strand(RAIN, i, 1);
   flush();
+}
+
+// The particle mask keeps the title alive inside the badge. This quiet,
+// authored-text pass keeps the Korean application title readable at portfolio
+// viewing distance while still letting the foreground rain cross in front.
+function drawApplicationCopy(){
+  const x = ART.x + ART.s*0.500;
+  const flicker = 0.82 + Math.sin(CT*5.4)*0.06;
+  ctx.save();
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.fillStyle = '#fff';
+  ctx.globalAlpha = flicker;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = '700 ' + Math.round(ART.s*0.070) + 'px "Apple SD Gothic Neo", "Noto Sans KR", Arial, sans-serif';
+  ctx.shadowColor = 'rgba(255,255,255,0.7)';
+  ctx.shadowBlur = Math.max(2, ART.s*0.005);
+  ctx.fillText('넥토리얼', x, ART.y + ART.s*0.486);
+  ctx.fillText('지원', x, ART.y + ART.s*0.552);
+  ctx.shadowBlur = 0;
+  ctx.globalAlpha = 0.72 + Math.sin(CT*4.1)*0.08;
+  ctx.font = '600 ' + Math.round(ART.s*0.015) + 'px ui-monospace, SFMono-Regular, Menlo, monospace';
+  ctx.fillText('PRESS ANY KEY / CLICK', ART.x + ART.s*0.473, ART.y + ART.s*0.669);
+  ctx.restore();
 }
 
 function frame(ts){
