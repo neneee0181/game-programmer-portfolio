@@ -1,4 +1,4 @@
-import { X } from "lucide-react"
+import { ArrowDown, Expand, Mouse, X } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { SparkBadge } from "@/components/ui/spark-badge"
 import { StarsCanvas } from "@/components/ui/stars-canvas"
@@ -55,6 +55,24 @@ function App() {
         galleryIndex={galleryIndex}
         className="relative z-[1] block h-full w-full overflow-hidden [&_.spark-badge__frame]:h-full [&_.spark-badge__frame]:w-full [&_.spark-badge__frame]:border-0 [&_.spark-badge__frame]:opacity-0 [&_.spark-badge__frame.is-ready]:opacity-100 [&_.spark-badge__frame]:transition-opacity"
       />
+      {galleryOpen && selectedIndex === null && (
+        <div className="pointer-events-none fixed inset-0 z-[11] flex items-center justify-center text-white">
+          <div className="flex h-[63vmin] w-[85vmin] flex-col justify-between py-[5vmin]">
+            <div className="text-center">
+              <p className="font-mono text-[10px] tracking-[0.24em] text-sky-200/85">{details[galleryIndex].eyebrow}</p>
+              <h1 className="mt-7 text-5xl font-semibold tracking-tight sm:text-8xl">{details[galleryIndex].title}</h1>
+              <p className="mx-auto mt-7 max-w-xl text-sm leading-6 text-white/70 sm:text-base">{details[galleryIndex].text}</p>
+            </div>
+            <div className="flex flex-wrap items-end justify-between gap-3 border-t border-white/20 pt-4 font-mono text-[9px] tracking-[0.13em] text-white/70 sm:text-[10px] sm:tracking-[0.16em]">
+              <span>{String(galleryIndex + 1).padStart(2, "0")} / 04</span>
+              <div className="flex flex-wrap justify-end gap-x-3 gap-y-2 text-right sm:gap-x-5">
+                <span className="flex items-center gap-2"><Mouse className="size-3.5 text-sky-300" /> SCROLL <ArrowDown className="size-3.5" /></span>
+                <span className="flex items-center gap-2"><Expand className="size-3.5 text-sky-300" /> CLICK TO VIEW</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {!galleryOpen && (
         <p className="pointer-events-none fixed inset-x-0 bottom-5 z-10 animate-pulse text-center font-mono text-[10px] font-medium tracking-[0.26em] text-white sm:bottom-7 sm:text-xs">
           CLICK TO ENTER · {countdown}

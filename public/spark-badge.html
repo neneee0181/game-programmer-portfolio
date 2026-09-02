@@ -379,14 +379,7 @@ function buildMasks(){
   }
 
   if (sceneVariant === 'gallery') {
-    const item = GALLERY_ITEMS[galleryIndex];
     frameRR(0.075, 0.185, 0.925, 0.815, 0.032, 0.0060, 'window');
-    cutText(item.eyebrow, 0.500, 0.300, 0.022, 'meta', 500);
-    cutText(item.title, 0.500, 0.495, item.title === '이정현' ? 0.102 : 0.092, 'korean');
-    cutLine(0.185, 0.625, 0.815, 0.625, 0.0048, 'rule');
-    cutLine(0.185, 0.672, 0.620, 0.672, 0.0040, 'meta');
-    cutLine(0.185, 0.704, 0.530, 0.704, 0.0037, 'meta');
-    cutText(String(galleryIndex + 1).padStart(2, '0') + ' / 04', 0.500, 0.755, 0.020, 'edition', 500);
     gm.globalCompositeOperation = 'source-over';
     return { detail: solid, occ, emph };
   }
