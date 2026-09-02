@@ -19,6 +19,7 @@ function App() {
   const [galleryOpen, setGalleryOpen] = useState(false)
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
   const [galleryIndex, setGalleryIndex] = useState(0)
+  const [galleryContentReady, setGalleryContentReady] = useState(false)
   const wheelLock = useRef(false)
 
   useEffect(() => {
@@ -46,6 +47,13 @@ function App() {
     return () => window.clearTimeout(timer)
   }, [countdown, galleryOpen])
 
+  useEffect(() => {
+    if (!galleryOpen) return
+    setGalleryContentReady(false)
+    const timer = window.setTimeout(() => setGalleryContentReady(true), 2500)
+    return () => window.clearTimeout(timer)
+  }, [galleryOpen, galleryIndex])
+
   return (
     <main className="h-screen w-screen overflow-hidden bg-black">
       <StarsCanvas maxStars={1050} hue={217} brightness={0.9} speedMultiplier={0.8} className="z-0" />
@@ -55,9 +63,9 @@ function App() {
         galleryIndex={galleryIndex}
         className="relative z-[1] block h-full w-full overflow-hidden [&_.spark-badge__frame]:h-full [&_.spark-badge__frame]:w-full [&_.spark-badge__frame]:border-0 [&_.spark-badge__frame]:opacity-0 [&_.spark-badge__frame.is-ready]:opacity-100 [&_.spark-badge__frame]:transition-opacity"
       />
-      {galleryOpen && selectedIndex === null && (
+      {galleryOpen && galleryContentReady && selectedIndex === null && (
         <div className="pointer-events-none fixed inset-0 z-[11] flex items-center justify-center text-white">
-          <div className="flex h-[63vmin] w-[85vmin] flex-col justify-between px-[6vmin] py-[6vmin]">
+          <div className="gallery-content-enter flex h-[63vmin] w-[85vmin] flex-col justify-between px-[6vmin] py-[6vmin]">
             <div className="text-center">
               <p className="font-mono text-[10px] tracking-[0.24em] text-sky-200/85">{details[galleryIndex].eyebrow}</p>
               <h1 className="mt-7 text-5xl font-semibold tracking-tight sm:text-8xl">{details[galleryIndex].title}</h1>
@@ -81,10 +89,12 @@ function App() {
       {galleryOpen && selectedIndex === null && (
         <div
           className="fixed inset-0 z-10 cursor-pointer"
-          onClick={() => setSelectedIndex(galleryIndex)}
+          onClick={() => {
+            if (galleryContentReady) setSelectedIndex(galleryIndex)
+          }}
           onWheel={(event) => {
             event.preventDefault()
-            if (wheelLock.current || Math.abs(event.deltaY) < 24) return
+            if (!galleryContentReady || wheelLock.current || Math.abs(event.deltaY) < 24) return
             const direction = event.deltaY > 0 ? 1 : -1
             setGalleryIndex((value) => Math.max(0, Math.min(details.length - 1, value + direction)))
             wheelLock.current = true
