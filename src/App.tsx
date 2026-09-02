@@ -56,16 +56,16 @@ function App() {
     return () => window.removeEventListener("keydown", close)
   }, [])
 
-  return <main className="dark min-h-screen overflow-hidden bg-[#050609] text-white">
+  return <main className="dark min-h-screen overflow-hidden bg-[#03020b] text-white">
     <div className="fixed inset-x-0 top-0 z-20 flex items-center justify-between px-5 py-5 sm:px-8">
-      <a href="#top" className="font-mono text-xs font-medium tracking-[0.18em] text-white/90">YB_GAME / 2026</a>
-      <a href="https://github.com/neneee0181" target="_blank" rel="noreferrer" className="flex items-center gap-2 font-mono text-[11px] tracking-[0.12em] text-white/55 transition hover:text-white">GITHUB <ArrowUpRight className="size-3.5" /></a>
+      <a href="#top" className="font-mono text-xs font-medium tracking-[0.18em] text-cyan-100 drop-shadow-[0_0_10px_#25eaff]">YB_GAME / 2026</a>
+      <a href="https://github.com/neneee0181" target="_blank" rel="noreferrer" className="flex items-center gap-2 font-mono text-[11px] tracking-[0.12em] text-fuchsia-200/75 transition hover:text-fuchsia-100">GITHUB <ArrowUpRight className="size-3.5" /></a>
     </div>
     <section id="top" className="relative h-screen min-h-[680px]">
       <EnvironmentMap onFaceSelect={selectFace} />
       <div className="pointer-events-none absolute inset-x-0 bottom-16 z-10 px-5 sm:bottom-10 sm:px-8">
         <div className="flex items-end justify-between gap-5">
-          <div><p className="mb-2 font-mono text-[10px] tracking-[0.18em] text-[#b6ff37]">INTERACTIVE PORTFOLIO</p><h1 className="text-balance text-4xl font-semibold tracking-[-0.075em] sm:text-6xl">Rotate the cube.<br />Open a story.</h1></div>
+          <div><p className="mb-2 font-mono text-[10px] tracking-[0.18em] text-cyan-300">INTERACTIVE PORTFOLIO</p><h1 className="text-balance text-4xl font-semibold tracking-[-0.075em] text-white [text-shadow:0_0_24px_rgba(255,51,189,.45)] sm:text-6xl">Rotate the cube.<br />Open a story.</h1></div>
           <div className="hidden items-center gap-2 pb-1 font-mono text-[10px] tracking-[0.12em] text-white/45 sm:flex"><Rotate3D className="size-4" /> DRAG / CLICK</div>
         </div>
       </div>

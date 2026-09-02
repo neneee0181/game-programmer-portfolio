@@ -16,12 +16,12 @@ type FaceSpec = {
 }
 
 const faces: FaceSpec[] = [
-  { id: "profile", eyebrow: "PLAYER 01", title: "YOUNG BIN", subtitle: "GAME CLIENT PROGRAMMER", color: "#b6ff37" },
-  { id: "kart-rider", eyebrow: "PROJECT 01", title: "KARTRIDER", subtitle: "C++ · OPENGL", color: "#ff704f" },
-  { id: "inversus", eyebrow: "PROJECT 02", title: "INVERSUS", subtitle: "C++ · WIN32", color: "#74a7ff" },
-  { id: "readapt", eyebrow: "PROJECT 03", title: "RE:ADAPT", subtitle: "UE5 · GRADUATION", color: "#c698ff" },
-  { id: "systems", eyebrow: "CORE", title: "BUILD", subtitle: "PLAY · TEST · ITERATE", color: "#ffe84a" },
-  { id: "contact", eyebrow: "STATUS", title: "2026", subtitle: "NEXON TUTORIAL", color: "#ffffff" },
+  { id: "profile", eyebrow: "PLAYER 01", title: "YOUNG BIN", subtitle: "GAME CLIENT PROGRAMMER", color: "#42f5e6" },
+  { id: "kart-rider", eyebrow: "PROJECT 01", title: "KARTRIDER", subtitle: "C++ · OPENGL", color: "#ff3bbf" },
+  { id: "inversus", eyebrow: "PROJECT 02", title: "INVERSUS", subtitle: "C++ · WIN32", color: "#42a5ff" },
+  { id: "readapt", eyebrow: "PROJECT 03", title: "RE:ADAPT", subtitle: "UE5 · GRADUATION", color: "#ba6bff" },
+  { id: "systems", eyebrow: "CORE", title: "BUILD", subtitle: "PLAY · TEST · ITERATE", color: "#f5e642" },
+  { id: "contact", eyebrow: "STATUS", title: "2026", subtitle: "NEXON TUTORIAL", color: "#ff3bbf" },
 ]
 
 function makeTexture(face: FaceSpec) {
@@ -32,14 +32,14 @@ function makeTexture(face: FaceSpec) {
   if (!context) return new THREE.CanvasTexture(textureCanvas)
 
   const gradient = context.createLinearGradient(0, 0, 1024, 1024)
-  gradient.addColorStop(0, "#15181d")
-  gradient.addColorStop(1, "#06070a")
+  gradient.addColorStop(0, "#16062c")
+  gradient.addColorStop(1, "#02030a")
   context.fillStyle = gradient
   context.fillRect(0, 0, 1024, 1024)
   context.strokeStyle = `${face.color}66`
   context.lineWidth = 3
   context.strokeRect(42, 42, 940, 940)
-  context.strokeStyle = "#ffffff18"
+  context.strokeStyle = "#5cfaff24"
   context.lineWidth = 1
   for (let line = 100; line < 960; line += 96) {
     context.beginPath()
@@ -103,27 +103,27 @@ function makeCheckerTexture() {
   gridCanvas.height = 512
   const context = gridCanvas.getContext("2d")
   if (!context) return new THREE.CanvasTexture(gridCanvas)
-  const cells = 8
-  const cellSize = gridCanvas.width / cells
-  for (let x = 0; x < cells; x += 1) {
-    for (let y = 0; y < cells; y += 1) {
-      context.fillStyle = (x + y) % 2 === 0 ? "#88a0b5" : "#4e667f"
-      context.fillRect(x * cellSize, y * cellSize, cellSize, cellSize)
-    }
+  context.fillStyle = "#050712"
+  context.fillRect(0, 0, 512, 512)
+  for (let line = 0; line <= 512; line += 32) {
+    context.strokeStyle = line % 128 === 0 ? "#ff2fb824" : "#25eaff30"
+    context.lineWidth = line % 128 === 0 ? 2 : 1
+    context.beginPath(); context.moveTo(line, 0); context.lineTo(line, 512); context.stroke()
+    context.beginPath(); context.moveTo(0, line); context.lineTo(512, line); context.stroke()
   }
   const texture = new THREE.CanvasTexture(gridCanvas)
   texture.colorSpace = THREE.SRGBColorSpace
   texture.wrapS = THREE.RepeatWrapping
   texture.wrapT = THREE.RepeatWrapping
-  texture.repeat.set(17, 17)
+  texture.repeat.set(10, 10)
   texture.anisotropy = 8
   return texture
 }
 
 export function createRenderer({ canvas, onFaceSelect }: RendererOptions) {
   const scene = new THREE.Scene()
-  scene.background = new THREE.Color("#91b6d7")
-  scene.fog = new THREE.Fog("#b9cce0", 18, 58)
+  scene.background = new THREE.Color("#03020b")
+  scene.fog = new THREE.Fog("#130424", 13, 54)
   const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 120)
   camera.position.set(0, 2.4, 11.5)
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false })
@@ -134,17 +134,17 @@ export function createRenderer({ canvas, onFaceSelect }: RendererOptions) {
 
   const sky = new THREE.Mesh(
     new THREE.SphereGeometry(80, 32, 16),
-    new THREE.MeshBasicMaterial({ color: "#a7c8e5", side: THREE.BackSide }),
+    new THREE.MeshBasicMaterial({ color: "#080314", side: THREE.BackSide }),
   )
   scene.add(sky)
   const horizon = new THREE.Mesh(
     new THREE.PlaneGeometry(120, 70),
-    new THREE.MeshBasicMaterial({ color: "#d4e2ee", transparent: true, opacity: 0.38, depthWrite: false }),
+    new THREE.MeshBasicMaterial({ color: "#e0188e", transparent: true, opacity: 0.2, depthWrite: false }),
   )
   horizon.position.set(0, 8, -38)
   scene.add(horizon)
   const cloudTexture = makeCloudTexture()
-  const cloudMaterial = new THREE.SpriteMaterial({ map: cloudTexture, transparent: true, opacity: 0.78, depthWrite: false, fog: false })
+  const cloudMaterial = new THREE.SpriteMaterial({ map: cloudTexture, color: "#5b1a88", transparent: true, opacity: 0.18, depthWrite: false, fog: false })
   const clouds = [
     [-10, 3.4, -13, 8, 3.2], [-3, 5.2, -17, 10, 3.6], [5.5, 3.8, -15, 8.8, 3], [13, 5.7, -22, 12, 4],
   ].map(([x, y, z, width, height]) => {
@@ -156,23 +156,23 @@ export function createRenderer({ canvas, onFaceSelect }: RendererOptions) {
   })
   const sun = new THREE.Mesh(
     new THREE.SphereGeometry(1.1, 24, 24),
-    new THREE.MeshBasicMaterial({ color: "#fff9d6", fog: false }),
+    new THREE.MeshBasicMaterial({ color: "#ff36c8", fog: false }),
   )
   sun.position.set(8.2, 3.6, -13)
   scene.add(sun)
-  const sunGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: cloudTexture, color: "#fff6c7", transparent: true, opacity: 0.58, depthWrite: false, fog: false }))
+  const sunGlow = new THREE.Sprite(new THREE.SpriteMaterial({ map: cloudTexture, color: "#ff2ebf", transparent: true, opacity: 0.8, depthWrite: false, fog: false }))
   sunGlow.position.copy(sun.position)
   sunGlow.scale.set(5, 3.2, 1)
   scene.add(sunGlow)
   const checkerTexture = makeCheckerTexture()
   const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(140, 140),
-    new THREE.MeshStandardMaterial({ map: checkerTexture, color: "#8fa7ba", roughness: 0.98, metalness: 0 }),
+    new THREE.MeshStandardMaterial({ map: checkerTexture, color: "#18213f", roughness: 0.7, metalness: 0.32, emissive: "#07152c", emissiveIntensity: 0.7 }),
   )
   ground.rotation.x = -Math.PI / 2
   ground.position.y = -2.8
   scene.add(ground)
-  const grid = new THREE.GridHelper(130, 34, "#9bb5c9", "#6c849b")
+  const grid = new THREE.GridHelper(130, 34, "#ff34bb", "#28e9ff")
   grid.position.y = -2.77
   grid.material.transparent = true
   grid.material.opacity = 0.78
@@ -185,11 +185,11 @@ export function createRenderer({ canvas, onFaceSelect }: RendererOptions) {
   cube.position.y = -0.25
   cube.rotation.set(-0.24, 0.6, 0.02)
   scene.add(cube)
-  scene.add(new THREE.HemisphereLight("#dceeff", "#52677c", 2.6))
-  const keyLight = new THREE.DirectionalLight("#fff5cf", 3.2)
+  scene.add(new THREE.HemisphereLight("#401165", "#02030a", 1.8))
+  const keyLight = new THREE.DirectionalLight("#ff66ce", 2.4)
   keyLight.position.set(10, 14, 8)
   scene.add(keyLight)
-  const rimLight = new THREE.PointLight("#b9d4ff", 22, 20)
+  const rimLight = new THREE.PointLight("#18eaff", 28, 20)
   rimLight.position.set(-4, 3, 5)
   scene.add(rimLight)
 
