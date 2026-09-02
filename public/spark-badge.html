@@ -627,6 +627,19 @@ function startGalleryMorph(){
     const e = nextEmitters.pick();
     FUR.tx[i] = ART.x + nextEmitters.x[e]*ART.s + (rnd()-0.5)*jitter;
     FUR.ty[i] = ART.y + nextEmitters.y[e]*ART.s + (rnd()-0.5)*jitter;
+    // Give the travelling ember its *next* card's motion now. When the mask
+    // swaps it can continue on the very next frame without a re-seed pause.
+    const em = nextEmitters.e[e], dr = nextEmitters.dr[e];
+    const pin = Math.max(0, Math.min(1, 1 - dr/0.85));
+    const angle = (rnd() < 0.62 + pin*0.30 ? (rnd() < 0.5 ? -1 : 1) * 1.35 : (rnd()-0.5)*1.10);
+    const cs = Math.cos(angle), sn = Math.sin(angle);
+    FUR.pin[i] = pin;
+    FUR.rx[i] = nextEmitters.nx[e]*cs - nextEmitters.ny[e]*sn;
+    FUR.ry[i] = nextEmitters.nx[e]*sn + nextEmitters.ny[e]*cs;
+    FUR.spd[i] = ART.s * (0.014 + Math.pow(rnd(), 1.7)*0.092) * (0.26 + dr*0.88) * (1 - pin*0.85);
+    FUR.len[i] = ART.s * (0.0024 + Math.pow(rnd(), 2.2)*0.0105) * (1 - pin*0.25);
+    FUR.k[i] = stepsFor(FUR.len[i], 1, 6);
+    FUR.max[i] = (0.24 + rnd()*0.66) * (1 - pin*0.48) * (0.78 + dr*0.38);
     // Keep the existing ember visible while it travels.  Life must remain
     // within its own max range or the strand envelope intentionally hides it.
     FUR.life[i] = FUR.max[i] * 0.55;
@@ -650,9 +663,6 @@ function stepMorph(d){
   sceneVariant = 'gallery';
   MASKS = MORPH.masks; EM = MORPH.emitters;
   OCC_PIXELS = MASKS.occ.getContext('2d').getImageData(0, 0, MW, MH).data;
-  // Re-seed the arrived particles with the gallery's own motion vectors at
-  // varied ages. This avoids a static settling frame before the new cards move.
-  for (let i = 0; i < NF; i++) spawnFur(i, true);
   MORPH = null;
 }
 // Sparse, long streaks travel across the star field like a meteor shower.
