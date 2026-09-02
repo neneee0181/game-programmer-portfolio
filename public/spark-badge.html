@@ -21,7 +21,7 @@ const params = new URLSearchParams(location.search);
 const requestedVariant = params.get('variant');
 let sceneVariant = requestedVariant === 'browser' || requestedVariant === 'iphone' || requestedVariant === 'studio-display' || requestedVariant === 'gallery' ? requestedVariant : 'badge';
 const GALLERY_ITEMS = [
-  { title: '이정현', eyebrow: 'PROFILE / RESUME' },
+  { title: '유영빈', eyebrow: 'PROFILE / RESUME' },
   { title: 'KartRider', eyebrow: 'GAME PROJECT / 01' },
   { title: 'INVERSUS', eyebrow: 'GAME PROJECT / 02' },
   { title: 'Re:adapt', eyebrow: 'GRADUATION PROJECT / 03' },
@@ -891,7 +891,7 @@ function strand(P, i, mode){
   }
 }
 
-let last = 0, acc = 0, frames = 0, slowRun = 0;
+let last = 0;
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 function stepRain(d){
@@ -1007,13 +1007,6 @@ function frame(ts){
   stepRain(d); stepMorph(d); stepFur(d); stepWater(d); stepImpacts(d);
   render();
 
-  // adaptive load governor
-  frames++; acc += dt;
-  if (frames >= 40){
-    const avg = acc/frames; frames = 0; acc = 0;
-    if (avg > 0.022){ slowRun++; if (slowRun >= 2){ NF = Math.max(1100, (NF*0.85)|0); NR = Math.max(36, (NR*0.9)|0); NW = NW ? Math.max(260, (NW*0.9)|0) : 0; slowRun = 0; } }
-    else slowRun = 0;
-  }
 }
 
 function flush(color = '#fff'){

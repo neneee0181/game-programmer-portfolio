@@ -8,7 +8,7 @@ import { StarsCanvas } from "@/components/ui/stars-canvas"
 const sourceUrl = `${import.meta.env.BASE_URL}spark-badge.html?v=${Date.now()}`
 
 const details = [
-  { title: "이정현", eyebrow: "PROFILE / RESUME", text: "게임의 움직임과 상호작용을 코드로 설계하는 게임 클라이언트 프로그래머 지망생입니다.", stack: "C++ · Unreal Engine 5 · OpenGL" },
+  { title: "유영빈", eyebrow: "PROFILE / RESUME", text: "감동과 기억이 되는 또 다른 세계를 만들어가는 게임 프로그래머 지망생 입니다.", stack: "C++ · Unreal Engine 5 · OpenGL" },
   { title: "KartRider", eyebrow: "GAME PROJECT / 01", text: "C++와 OpenGL을 바탕으로 구현한 레이싱 게임 프로젝트입니다. 게임 루프와 렌더링 구조를 직접 다루며 플레이 감각과 화면 표현을 연결했습니다.", stack: "C++ · OpenGL · Game Client" },
   { title: "INVERSUS", eyebrow: "GAME PROJECT / 02", text: "C++와 Win32 기반으로 게임 플레이를 구현한 프로젝트입니다. 입력, 상태 변화, 화면 표현이 연결되는 게임 클라이언트 흐름에 집중했습니다.", stack: "C++ · Win32 · Game Client" },
   { title: "Re:adapt", eyebrow: "GRADUATION PROJECT / 03", text: "Unreal Engine 5로 제작한 졸업 작품입니다. 기획 의도를 실제 플레이 가능한 경험으로 연결하는 구현 과정을 다뤘습니다.", stack: "Unreal Engine 5 · Blueprint · Game Design" },
@@ -57,7 +57,7 @@ function App() {
       />
       {galleryOpen && selectedIndex === null && (
         <div className="pointer-events-none fixed inset-0 z-[11] flex items-center justify-center text-white">
-          <div className="flex h-[63vmin] w-[85vmin] flex-col justify-between py-[5vmin]">
+          <div className="flex h-[63vmin] w-[85vmin] flex-col justify-between px-[6vmin] py-[6vmin]">
             <div className="text-center">
               <p className="font-mono text-[10px] tracking-[0.24em] text-sky-200/85">{details[galleryIndex].eyebrow}</p>
               <h1 className="mt-7 text-5xl font-semibold tracking-tight sm:text-8xl">{details[galleryIndex].title}</h1>
