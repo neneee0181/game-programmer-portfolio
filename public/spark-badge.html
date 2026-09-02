@@ -115,7 +115,7 @@ const EMPH = {
   rule:   [1.05, 0.15], word: [1.75, 0.17], edition: [1.80, 0.18],
   window: [1.70, 0.16], meta: [1.15, 0.15], name: [2.10, 0.18],
   tier:   [1.85, 0.17], qr:   [1.45, 0.20],
-  korean: [2.80, 0.08], prompt: [2.55, 0.08]
+  korean: [3.15, 0.06], prompt: [3.35, 0.04]
 };
 const B = 78;
 const W2G = k => { const e = EMPH[k];
@@ -404,12 +404,31 @@ function buildMasks(){
 
   /* ---- both messages are carved from the credential mask, so they reform
          only through the same ember material as the badge itself. ---- */
-  cutText('PRESS ANY KEY', 0.500, 0.078, 0.020, 'prompt', 600);
-  cutText('넥토리얼',     0.500, 0.530, 0.076, 'korean');
+  cutText('넥토리얼',     0.500, 0.490, 0.102, 'korean');
 
   gm.restore(); ge.restore();
   gm.globalCompositeOperation = 'source-over';
   return { detail: solid, occ, emph };
+}
+
+// The prompt sits in open sky rather than on the card. It gets a dedicated
+// authored mask and emitter budget so it stays legible without becoming a
+// normal DOM/Canvas text overlay.
+function buildPromptMask(){
+  const solid = document.createElement('canvas'); solid.width = MW; solid.height = MH;
+  const emph = document.createElement('canvas'); emph.width = MW; emph.height = MH;
+  const gm = solid.getContext('2d'), ge = emph.getContext('2d');
+  gm.translate(0, -AY0*MW); ge.translate(0, -AY0*MW);
+  for (const c of [gm, ge]){
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    c.font = '700 ' + (0.042*MW) + 'px Arial, sans-serif';
+  }
+  gm.fillStyle = '#fff';
+  gm.fillText('PRESS ANY KEY', 0.500*MW, 0.078*MW);
+  ge.fillStyle = W2G('prompt');
+  ge.fillText('PRESS ANY KEY', 0.500*MW, 0.078*MW);
+  return { detail: solid, emph };
 }
 
 /* ------------------------------------------------------------------ *
@@ -473,6 +492,8 @@ const WIND = { x: Math.cos(WANG), y: Math.sin(WANG) };
 
 const MASKS = buildMasks();
 const EM = buildEmitters(MASKS.detail, MASKS.emph);
+const PROMPT_MASKS = buildPromptMask();
+const PROMPT_EM = buildEmitters(PROMPT_MASKS.detail, PROMPT_MASKS.emph);
 
 /* ---- strand pools ----
    A spark is a moving particle drawn as its own motion blur: a short tick
@@ -481,7 +502,7 @@ const EM = buildEmitters(MASKS.detail, MASKS.emph);
 const SEG = 0.0082;                 // segment length as a fraction of the stage
 // Counts calibrated against the reference at a 900px stage. Marks scale with
 // the stage, so the budget has to scale too or a retina display thins out.
-const NF0 = 17600, NR0 = 300, NW0 = 460, REF_S = 900;
+const NF0 = 17600, NR0 = 300, NW0 = 460, NTP = 1800, REF_S = 900;
 let NF = NF0, NR = NR0, NW = NW0;
 let BASE_NF = NF0, BASE_NR = NR0, BASE_NW = NW0;
 const CAP_F = 40000, CAP_R = 1400, CAP_W = 1600;
@@ -530,7 +551,7 @@ const mk = n => ({
   age: new Float32Array(n),                           // seconds since spawn (rain fade-in)
   k: new Uint8Array(n)
 });
-const FUR = mk(CAP_F), RAIN = mk(CAP_R), WAT = mk(CAP_W);
+const FUR = mk(CAP_F), RAIN = mk(CAP_R), WAT = mk(CAP_W), PROMPT = mk(NTP);
 
 const pickStyle = () => { const r = rnd(); return r < 0.46 ? 0 : (r < 0.78 ? 1 : 2); };
 const stepsFor = (len, lo, hi) => Math.max(lo, Math.min(hi, Math.round(len/(SEG*ART.s))));
@@ -575,6 +596,25 @@ function spawnFur(i, seeded){
   FUR.seed[i] = rnd()*1000;
   FUR.style[i] = pickStyle();
   FUR.life[i] = seeded ? rnd()*FUR.max[i] : FUR.max[i];
+}
+function spawnPrompt(i, seeded){
+  const e = PROMPT_EM.pick(), j = 0.0018 * ART.s;
+  PROMPT.x[i] = ART.x + PROMPT_EM.x[e]*ART.s + (rnd()-0.5)*j;
+  PROMPT.y[i] = ART.y + PROMPT_EM.y[e]*ART.s + (rnd()-0.5)*j;
+  const tangent = (rnd() < 0.5 ? -1 : 1) * (1.42 + (rnd()-0.5)*0.20);
+  const cs = Math.cos(tangent), sn = Math.sin(tangent);
+  PROMPT.rx[i] = PROMPT_EM.nx[e]*cs - PROMPT_EM.ny[e]*sn;
+  PROMPT.ry[i] = PROMPT_EM.nx[e]*sn + PROMPT_EM.ny[e]*cs;
+  PROMPT.nx[i] = PROMPT.rx[i]; PROMPT.ny[i] = PROMPT.ry[i];
+  PROMPT.pin[i] = 0.93;
+  PROMPT.spd[i] = ART.s * (0.003 + Math.pow(rnd(), 1.8)*0.018);
+  PROMPT.len[i] = ART.s * (0.0024 + Math.pow(rnd(), 2.1)*0.010);
+  PROMPT.br[i] = 1.05 + rnd()*1.15;
+  PROMPT.max[i] = 0.18 + rnd()*0.52;
+  PROMPT.k[i] = stepsFor(PROMPT.len[i], 1, 6);
+  PROMPT.seed[i] = rnd()*1000;
+  PROMPT.style[i] = pickStyle();
+  PROMPT.life[i] = seeded ? rnd()*PROMPT.max[i] : PROMPT.max[i];
 }
 // Rain must fall *through* the frame: enter above the top edge, cross, exit past
 // the bottom. Anything that dies of old age mid-air reads as flickering, not
@@ -659,6 +699,7 @@ function layout(){
   applyParticleCounts();
 
   for (let i = 0; i < CAP_F; i++) spawnFur(i, true);
+  for (let i = 0; i < NTP; i++) spawnPrompt(i, true);
   for (let i = 0; i < CAP_R; i++) spawnRain(i, true);
   for (let i = 0; i < CAP_W; i++) spawnWater(i, true);
 }
@@ -772,6 +813,19 @@ function stepFur(d){
     FUR.nx[i] = dx; FUR.ny[i] = dy;                 // the tick lies along the motion
   }
 }
+function stepPrompt(d){
+  for (let i = 0; i < NTP; i++){
+    PROMPT.life[i] -= d;
+    if (PROMPT.life[i] <= 0){ spawnPrompt(i, false); continue; }
+    const age = 1 - PROMPT.life[i]/PROMPT.max[i];
+    curlAt((PROMPT.x[i]-ART.x)/ART.s, (PROMPT.y[i]-ART.y)/ART.s, cur);
+    const c = (0.05 + age*0.20) * turb;
+    let dx = PROMPT.rx[i]*0.78 + cur[0]*c, dy = PROMPT.ry[i]*0.78 + cur[1]*c;
+    const m = Math.hypot(dx, dy) || 1; dx /= m; dy /= m;
+    PROMPT.x[i] += dx*PROMPT.spd[i]*d; PROMPT.y[i] += dy*PROMPT.spd[i]*d;
+    PROMPT.nx[i] = dx; PROMPT.ny[i] = dy;
+  }
+}
 function stepWater(d){
   for (let i = 0; i < NW; i++){
     WAT.life[i] -= d;
@@ -790,7 +844,7 @@ function cycle(){                                      // slow dissolve / reform
 // frame is a bare outline. Run the sim forward before anything is painted.
 function prewarm(){
   const d = 1/30;                                     // ~1s of sim: past the longest ember life
-  for (let n = 0; n < 30; n++){ CT += d; stepRain(d); stepFur(d); stepWater(d); }
+  for (let n = 0; n < 30; n++){ CT += d; stepRain(d); stepFur(d); stepPrompt(d); stepWater(d); }
   cycle();
 }
 
@@ -813,6 +867,7 @@ function render(){
 
   for (let i = 0; i < NB; i++) paths[i] = new Path2D();
   for (let i = 0; i < NF; i++) strand(FUR, i, 0);
+  for (let i = 0; i < NTP; i++) strand(PROMPT, i, 0);
   for (let i = 0; i < NW; i++) strand(WAT, i, 2);
   flush();
 
@@ -832,7 +887,7 @@ function frame(ts){
   cycle();
 
   const d = dt * rate;
-  stepRain(d); stepFur(d); stepWater(d);
+  stepRain(d); stepFur(d); stepPrompt(d); stepWater(d);
   render();
 
   // adaptive load governor
