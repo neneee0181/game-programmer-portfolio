@@ -20,6 +20,13 @@ const TAU = Math.PI * 2;
 const params = new URLSearchParams(location.search);
 const requestedVariant = params.get('variant');
 let sceneVariant = requestedVariant === 'browser' || requestedVariant === 'iphone' || requestedVariant === 'studio-display' || requestedVariant === 'gallery' ? requestedVariant : 'badge';
+const GALLERY_ITEMS = [
+  { title: '이정현', eyebrow: 'PROFILE / RESUME' },
+  { title: 'KartRider', eyebrow: 'GAME PROJECT / 01' },
+  { title: 'INVERSUS', eyebrow: 'GAME PROJECT / 02' },
+  { title: 'Re:adapt', eyebrow: 'GRADUATION PROJECT / 03' },
+];
+let galleryIndex = 0;
 const runtimeControls = {
   speed: 1,
   particleAmount: 1,
@@ -179,11 +186,7 @@ function buildMasks(){
     both(c => { rr(c, 0.100, 0.180, 0.900, 0.680, 0.032); c.fill(); });
   } else if (sceneVariant === 'gallery') {
     key('card');
-    both(c => {
-      rr(c, 0.135, 0.270, 0.865, 0.405, 0.022); c.fill();
-      rr(c, 0.135, 0.468, 0.865, 0.603, 0.022); c.fill();
-      rr(c, 0.135, 0.666, 0.865, 0.801, 0.022); c.fill();
-    });
+    both(c => { rr(c, 0.075, 0.185, 0.925, 0.815, 0.032); c.fill(); });
   } else {
     /* ---- lanyard: two ribbons rising out of frame to the clip ---- */
     key('strap');
@@ -376,15 +379,14 @@ function buildMasks(){
   }
 
   if (sceneVariant === 'gallery') {
-    for (const y of [0.270, 0.468, 0.666]) {
-      frameRR(0.135, y, 0.865, y+0.135, 0.022, 0.0055, 'window');
-      cutRR(0.175, y+0.035, 0.335, y+0.073, 0.010, 'name');
-      cutLine(0.175, y+0.098, 0.535, y+0.098, 0.0042, 'meta');
-      cutLine(0.175, y+0.116, 0.450, y+0.116, 0.0036, 'meta');
-      cutCircle(0.765, y+0.068, 0.026, 'edition');
-      cutLine(0.738, y+0.068, 0.792, y+0.068, 0.0038, 'word');
-      cutLine(0.765, y+0.041, 0.765, y+0.095, 0.0038, 'word');
-    }
+    const item = GALLERY_ITEMS[galleryIndex];
+    frameRR(0.075, 0.185, 0.925, 0.815, 0.032, 0.0060, 'window');
+    cutText(item.eyebrow, 0.500, 0.300, 0.022, 'meta', 500);
+    cutText(item.title, 0.500, 0.495, item.title === '이정현' ? 0.102 : 0.092, 'korean');
+    cutLine(0.185, 0.625, 0.815, 0.625, 0.0048, 'rule');
+    cutLine(0.185, 0.672, 0.620, 0.672, 0.0040, 'meta');
+    cutLine(0.185, 0.704, 0.530, 0.704, 0.0037, 'meta');
+    cutText(String(galleryIndex + 1).padStart(2, '0') + ' / 04', 0.500, 0.755, 0.020, 'edition', 500);
     gm.globalCompositeOperation = 'source-over';
     return { detail: solid, occ, emph };
   }
@@ -519,7 +521,11 @@ function applyParticleCounts(){
 addEventListener('message', event => {
   if (!event.data) return;
   if (event.data.type === 'spark-badge-variant' && event.data.variant === 'gallery' && sceneVariant !== 'gallery') {
-    startGalleryMorph();
+    startGalleryMorph(0);
+    return;
+  }
+  if (event.data.type === 'spark-badge-gallery-index' && Number.isInteger(event.data.index)) {
+    startGalleryMorph(Math.max(0, Math.min(GALLERY_ITEMS.length - 1, event.data.index)));
     return;
   }
   if (event.data.type === 'spark-badge-step') {
@@ -545,10 +551,24 @@ addEventListener('message', event => {
   reflectControls();
 });
 
-const requestEntry = () => {
-  if (parent !== window) parent.postMessage({ type: 'spark-badge-enter' }, '*');
+const requestEntry = event => {
+  const x = event.clientX * DPR, y = event.clientY * DPR;
+  const cardX = ART.x + ART.s*0.075, cardY = ART.y + ART.s*0.185;
+  const onGalleryCard = sceneVariant === 'gallery' && !MORPH && x >= cardX && x <= cardX + ART.s*0.85 && y >= cardY && y <= cardY + ART.s*0.63;
+  if (parent !== window) parent.postMessage(onGalleryCard ? { type: 'spark-badge-gallery-select', index: galleryIndex } : { type: 'spark-badge-enter' }, '*');
 };
 addEventListener('pointerdown', requestEntry);
+
+let wheelDistance = 0;
+addEventListener('wheel', event => {
+  if (sceneVariant !== 'gallery' || MORPH) return;
+  event.preventDefault();
+  wheelDistance += event.deltaY;
+  if (Math.abs(wheelDistance) < 55) return;
+  const direction = wheelDistance > 0 ? 1 : -1;
+  wheelDistance = 0;
+  startGalleryMorph(Math.max(0, Math.min(GALLERY_ITEMS.length - 1, galleryIndex + direction)));
+}, { passive: false });
 
 const mk = n => ({
   x: new Float32Array(n), y: new Float32Array(n),
@@ -615,13 +635,15 @@ function spawnFur(i, seeded){
   FUR.life[i] = seeded ? rnd()*FUR.max[i] : FUR.max[i];
 }
 
-function startGalleryMorph(){
-  if (MORPH || sceneVariant === 'gallery') return;
+function startGalleryMorph(nextIndex){
+  if (MORPH || (sceneVariant === 'gallery' && nextIndex === galleryIndex)) return;
   const previousVariant = sceneVariant;
+  const previousIndex = galleryIndex;
   sceneVariant = 'gallery';
+  galleryIndex = nextIndex;
   const nextMasks = buildMasks();
   const nextEmitters = buildEmitters(nextMasks.detail, nextMasks.emph);
-  sceneVariant = previousVariant;
+  sceneVariant = previousVariant; galleryIndex = previousIndex;
   const jitter = 0.0035 * ART.s;
   for (let i = 0; i < NF; i++){
     const e = nextEmitters.pick();
@@ -646,7 +668,7 @@ function startGalleryMorph(){
   }
   // Old-card impacts must not survive into the new gallery transition.
   IMPACTS.length = 0;
-  MORPH = { elapsed: 0, duration: 2.35, masks: nextMasks, emitters: nextEmitters, maskSwapped: false };
+  MORPH = { elapsed: 0, duration: 2.35, masks: nextMasks, emitters: nextEmitters, index: nextIndex, maskSwapped: false };
 }
 
 function stepMorph(d){
@@ -668,7 +690,7 @@ function stepMorph(d){
   // occlusion/collision surface now, not at the end, so no old-card spark can
   // appear while the gallery is visible.
   if (p >= 0.60 && !MORPH.maskSwapped){
-    sceneVariant = 'gallery';
+    sceneVariant = 'gallery'; galleryIndex = MORPH.index;
     MASKS = MORPH.masks; EM = MORPH.emitters;
     OCC_PIXELS = MASKS.occ.getContext('2d').getImageData(0, 0, MW, MH).data;
     IMPACTS.length = 0;

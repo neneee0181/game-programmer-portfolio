@@ -6,9 +6,10 @@ export type SparkBadgeProps = {
   className?: string;
   sourceUrl?: string;
   variant?: SparkBadgeVariant;
+  galleryIndex?: number;
 };
 
-export function SparkBadge({ className = "", sourceUrl, variant = "badge" }: SparkBadgeProps) {
+export function SparkBadge({ className = "", sourceUrl, variant = "badge", galleryIndex = 0 }: SparkBadgeProps) {
   const hostRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLIFrameElement>(null);
   const intersectsRef = useRef(true);
@@ -48,6 +49,14 @@ export function SparkBadge({ className = "", sourceUrl, variant = "badge" }: Spa
       "*",
     );
   }, [ready, variant]);
+
+  useEffect(() => {
+    if (!ready || variant !== "gallery") return;
+    frameRef.current?.contentWindow?.postMessage(
+      { type: "spark-badge-gallery-index", index: galleryIndex },
+      "*",
+    );
+  }, [ready, variant, galleryIndex]);
 
   return (
     <div
