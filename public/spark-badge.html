@@ -151,7 +151,7 @@ function buildMasks(){
     for (let i = 1; i < a.length; i++) c.lineTo(a[i][0]*S, a[i][1]*S);
     c.closePath();
   };
-  const SC = 1.12;                          // grown from the base so the card fills more frame
+  const SC = 1.30;                          // grow the full credential from its base into the frame
   const tilt = c => {
     c.save();
     c.translate(0.500*S, 0.862*S); c.scale(SC, SC); c.translate(-0.500*S, -0.862*S);
