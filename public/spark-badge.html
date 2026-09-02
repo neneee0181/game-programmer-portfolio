@@ -830,7 +830,7 @@ function render(){
   // rain behind the figure first, so the silhouette can be punched out of it
   for (let i = 0; i < NB; i++) paths[i] = new Path2D();
   for (let i = 0; i < NR; i++) if (!RAIN.pin[i]) strand(RAIN, i, 1);
-  flush('#c5dcff');
+  flush('#79abff');
 
   ctx.save();
   ctx.globalCompositeOperation = 'destination-out';
@@ -847,7 +847,7 @@ function render(){
   // and the rest in front, so falling lines cross the figure too
   for (let i = 0; i < NB; i++) paths[i] = new Path2D();
   for (let i = 0; i < NR; i++) if (RAIN.pin[i]) strand(RAIN, i, 1);
-  flush('#d6e7ff');
+  flush('#8dbbff');
   drawImpacts();
 }
 
