@@ -6,9 +6,9 @@
 <title>Spark Badge — credential in rain</title>
 <link rel="icon" href="data:,">
 <style>
-  html,body{margin:0;height:100%;background:#000;overflow:hidden}
+  html,body{margin:0;height:100%;background:transparent;overflow:hidden}
   body{-webkit-font-smoothing:antialiased}
-  canvas{display:block;width:100vw;height:100vh;background:#000}
+  canvas{display:block;width:100vw;height:100vh;background:transparent}
 </style>
 </head>
 <body>
@@ -464,9 +464,8 @@ function buildEmitters(maskCanvas, emphCanvas){
  *  stage
  * ------------------------------------------------------------------ */
 const cv = document.getElementById('c');
-const ctx = cv.getContext('2d', { alpha: false });
+const ctx = cv.getContext('2d', { alpha: true });
 let VW = 0, VH = 0, DPR = 1, ART = { x:0, y:0, s:0 }, LW = 1, WATER = 0;
-const STARS = [];
 
 const WANG = 60 * Math.PI/180;
 const WIND = { x: Math.cos(WANG), y: Math.sin(WANG) };
@@ -658,16 +657,6 @@ function layout(){
   BASE_NR = Math.min(CAP_R, Math.round(NR0 * D * clamp(VW*VH/(s*s), 0.6, 3.0)));   // sky area
   BASE_NW = Math.min(CAP_W, Math.round(NW0 * D * clamp(VW/s, 0.6, 3.0)));          // waterline width
   applyParticleCounts();
-  const starRnd = mulberry32(0xC05A1C);
-  STARS.length = 0;
-  const starCount = Math.round(220 + Math.min(260, VW*VH/(900*900)*150));
-  for (let i = 0; i < starCount; i++) STARS.push({
-    x: starRnd()*VW, y: starRnd()*VH,
-    size: 0.55 + starRnd()*1.35,
-    alpha: 0.30 + starRnd()*0.65,
-    phase: starRnd()*TAU,
-  });
-
   for (let i = 0; i < CAP_F; i++) spawnFur(i, true);
   for (let i = 0; i < CAP_R; i++) spawnRain(i, true);
   if (NW) for (let i = 0; i < CAP_W; i++) spawnWater(i, true);
@@ -806,9 +795,7 @@ function prewarm(){
 
 function render(){
   ctx.globalCompositeOperation = 'source-over';
-  ctx.fillStyle = '#000';
-  ctx.fillRect(0, 0, VW, VH);
-  drawStarfield();
+  ctx.clearRect(0, 0, VW, VH);
 
   // rain behind the figure first, so the silhouette can be punched out of it
   for (let i = 0; i < NB; i++) paths[i] = new Path2D();
@@ -831,16 +818,6 @@ function render(){
   for (let i = 0; i < NB; i++) paths[i] = new Path2D();
   for (let i = 0; i < NR; i++) if (RAIN.pin[i]) strand(RAIN, i, 1);
   flush();
-}
-
-function drawStarfield(){
-  ctx.save();
-  ctx.fillStyle = '#fff';
-  for (const star of STARS){
-    ctx.globalAlpha = star.alpha * (0.72 + Math.sin(CT*1.6 + star.phase)*0.28);
-    ctx.fillRect(star.x, star.y, star.size, star.size);
-  }
-  ctx.restore();
 }
 
 function frame(ts){
