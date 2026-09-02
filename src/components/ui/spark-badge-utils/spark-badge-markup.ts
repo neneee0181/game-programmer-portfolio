@@ -13,40 +13,62 @@ export const SPARK_BADGE_MARKUP = String.raw`<!doctype html>
     <script>
       const canvas = document.getElementById("nexterial-card");
       const ctx = canvas.getContext("2d");
-      const rain = [];
-      const splash = [];
-      const cardDust = [];
+      const backRain = [], frontRain = [], splash = [], cardDust = [], textDust = [];
       const rand = (a, b) => a + Math.random() * (b - a);
-      let width = 0, height = 0, dpr = 1, card;
+      let width = 0, height = 0, dpr = 1, cardSize = { w: 0, h: 0 };
 
-      function resetDrop(drop, initial = false) {
-        drop.x = rand(-width * .1, width * 1.1);
-        drop.y = initial ? rand(-height, height) : rand(-height * .22, -14);
-        drop.length = rand(14, 34);
-        drop.speed = rand(1.35, 3.15);
-        drop.alpha = rand(.16, .72);
-        drop.weight = Math.random() > .86 ? 1.25 : .55;
+      function resetDrop(drop, initial, foreground) {
+        drop.x = rand(-width * .12, width * 1.12);
+        drop.y = initial ? rand(-height, height) : rand(-height * .25, -18);
+        drop.length = foreground ? rand(16, 42) : rand(12, 34);
+        drop.speed = foreground ? rand(2.7, 5.3) : rand(2.2, 4.4);
+        drop.alpha = foreground ? rand(.34, .88) : rand(.055, .21);
+        drop.weight = foreground && Math.random() > .82 ? 1.2 : .55;
       }
 
-      function makeCardDust() {
-        cardDust.length = 0;
-        const addEdge = (x1, y1, x2, y2, amount) => {
-          for (let i = 0; i < amount; i++) {
-            const t = Math.random();
-            cardDust.push({
-              x: x1 + (x2 - x1) * t + rand(-2, 2),
-              y: y1 + (y2 - y1) * t + rand(-2, 2),
-              size: rand(.5, 2.4),
-              angle: rand(-.55, .55),
-              alpha: rand(.25, .96),
-              phase: rand(0, Math.PI * 2),
-            });
+      function addLineDust(x1, y1, x2, y2, count) {
+        for (let i = 0; i < count; i++) {
+          const t = Math.random();
+          cardDust.push({
+            x: x1 + (x2 - x1) * t + rand(-2, 2),
+            y: y1 + (y2 - y1) * t + rand(-2, 2),
+            size: rand(.45, 2.2),
+            angle: rand(-.8, .8),
+            alpha: rand(.2, .95),
+            phase: rand(0, Math.PI * 2),
+          });
+        }
+      }
+
+      function makeTextDust() {
+        textDust.length = 0;
+        const scale = 2;
+        const offscreen = document.createElement("canvas");
+        offscreen.width = Math.ceil(cardSize.w * scale);
+        offscreen.height = Math.ceil(cardSize.h * scale);
+        const ink = offscreen.getContext("2d");
+        ink.scale(scale, scale);
+        ink.fillStyle = "#fff";
+        ink.textAlign = "center";
+        ink.textBaseline = "middle";
+        ink.font = "700 " + (cardSize.w * .23) + "px Arial, sans-serif";
+        ink.fillText("넥토리얼", cardSize.w / 2, cardSize.h * .44);
+        ink.fillText("지원", cardSize.w / 2, cardSize.h * .59);
+        const data = ink.getImageData(0, 0, offscreen.width, offscreen.height).data;
+        const step = 2 * scale;
+        for (let y = 0; y < offscreen.height; y += step) {
+          for (let x = 0; x < offscreen.width; x += step) {
+            if (data[(y * offscreen.width + x) * 4 + 3] > 100 && Math.random() > .1) {
+              textDust.push({
+                x: x / scale - cardSize.w / 2 + rand(-.8, .8),
+                y: y / scale - cardSize.h / 2 + rand(-.8, .8),
+                size: rand(.65, 1.7),
+                alpha: rand(.62, 1),
+                phase: rand(0, Math.PI * 2),
+              });
+            }
           }
-        };
-        addEdge(card.left, card.top, card.right, card.top, 250);
-        addEdge(card.right, card.top, card.right, card.bottom, 350);
-        addEdge(card.right, card.bottom, card.left, card.bottom, 250);
-        addEdge(card.left, card.bottom, card.left, card.top, 350);
+        }
       }
 
       function resize() {
@@ -56,145 +78,155 @@ export const SPARK_BADGE_MARKUP = String.raw`<!doctype html>
         canvas.width = Math.round(width * dpr);
         canvas.height = Math.round(height * dpr);
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        const cardWidth = Math.min(width * .39, height * .43);
-        const cardHeight = Math.min(height * .72, cardWidth * 1.42);
-        card = {
-          left: (width - cardWidth) * .5,
-          right: (width + cardWidth) * .5,
-          top: (height - cardHeight) * .5,
-          bottom: (height + cardHeight) * .5,
-        };
-        rain.length = 0;
-        for (let i = 0; i < Math.max(120, Math.round(width * .19)); i++) {
+        cardSize.w = Math.min(width * .55, height * .65);
+        cardSize.h = Math.min(height * .85, cardSize.w * 1.48);
+        cardDust.length = 0;
+        const l = -cardSize.w / 2, r = cardSize.w / 2, t = -cardSize.h / 2, b = cardSize.h / 2;
+        addLineDust(l, t, r, t, 420);
+        addLineDust(r, t, r, b, 580);
+        addLineDust(r, b, l, b, 420);
+        addLineDust(l, b, l, t, 580);
+        makeTextDust();
+        backRain.length = 0;
+        frontRain.length = 0;
+        for (let i = 0; i < Math.max(130, width * .17); i++) {
           const drop = {};
-          resetDrop(drop, true);
-          rain.push(drop);
+          resetDrop(drop, true, false);
+          backRain.push(drop);
         }
-        makeCardDust();
+        for (let i = 0; i < Math.max(115, width * .145); i++) {
+          const drop = {};
+          resetDrop(drop, true, true);
+          frontRain.push(drop);
+        }
+      }
+
+      function cardTransform(now) {
+        return {
+          x: width * .5 + Math.sin(now * .00031) * width * .021,
+          y: height * .5 + Math.sin(now * .00043 + 1.2) * height * .018,
+          rotation: Math.sin(now * .00024) * .052 + Math.cos(now * .00017) * .018,
+        };
+      }
+
+      function worldToLocal(x, y, transform) {
+        const dx = x - transform.x, dy = y - transform.y;
+        const c = Math.cos(transform.rotation), s = Math.sin(transform.rotation);
+        return { x: dx * c + dy * s, y: -dx * s + dy * c };
+      }
+
+      function localToWorld(x, y, transform) {
+        const c = Math.cos(transform.rotation), s = Math.sin(transform.rotation);
+        return { x: transform.x + x * c - y * s, y: transform.y + x * s + y * c };
       }
 
       function addSplash(x, y, normalX, normalY) {
-        const count = Math.floor(rand(4, 8));
+        const count = Math.floor(rand(5, 10));
         for (let i = 0; i < count; i++) {
-          const outward = rand(1.4, 3.7);
+          const force = rand(1.7, 4.8);
           splash.push({
             x, y,
-            vx: normalX * outward + rand(-1.7, 1.7),
-            vy: normalY * outward + rand(-1.4, .5),
-            life: rand(12, 25),
-            maxLife: 25,
-            size: rand(.45, 1.3),
+            vx: normalX * force + rand(-1.8, 1.8),
+            vy: normalY * force + rand(-1.6, .6),
+            life: rand(13, 28),
+            maxLife: 28,
+            size: rand(.45, 1.45),
           });
         }
       }
 
-      function hitCard(drop, nextX, nextY) {
-        const dx = nextX - drop.x;
-        const dy = nextY - drop.y;
-        const hits = [
-          { x: card.left, y1: card.top, y2: card.bottom, nx: -1, ny: 0 },
-          { x: card.right, y1: card.top, y2: card.bottom, nx: 1, ny: 0 },
-          { y: card.top, x1: card.left, x2: card.right, nx: 0, ny: -1 },
-          { y: card.bottom, x1: card.left, x2: card.right, nx: 0, ny: 1 },
+      function collide(drop, nextX, nextY, transform) {
+        const a = worldToLocal(drop.x, drop.y, transform);
+        const b = worldToLocal(nextX, nextY, transform);
+        const dx = b.x - a.x, dy = b.y - a.y;
+        const l = -cardSize.w / 2, r = cardSize.w / 2, t = -cardSize.h / 2, bot = cardSize.h / 2;
+        const edges = [
+          { value: l, min: t, max: bot, axis: "x", nx: -1, ny: 0 },
+          { value: r, min: t, max: bot, axis: "x", nx: 1, ny: 0 },
+          { value: t, min: l, max: r, axis: "y", nx: 0, ny: -1 },
+          { value: bot, min: l, max: r, axis: "y", nx: 0, ny: 1 },
         ];
-        for (const edge of hits) {
-          if (edge.x !== undefined && dx !== 0) {
-            const t = (edge.x - drop.x) / dx;
-            const y = drop.y + dy * t;
-            if (t >= 0 && t <= 1 && y >= edge.y1 && y <= edge.y2) {
-              addSplash(edge.x, y, edge.nx, edge.ny);
-              resetDrop(drop);
-              return true;
-            }
-          }
-          if (edge.y !== undefined && dy !== 0) {
-            const t = (edge.y - drop.y) / dy;
-            const x = drop.x + dx * t;
-            if (t >= 0 && t <= 1 && x >= edge.x1 && x <= edge.x2) {
-              addSplash(x, edge.y, edge.nx, edge.ny);
-              resetDrop(drop);
-              return true;
-            }
+        for (const edge of edges) {
+          const movement = edge.axis === "x" ? dx : dy;
+          const start = edge.axis === "x" ? a.x : a.y;
+          if (!movement) continue;
+          const ratio = (edge.value - start) / movement;
+          const other = edge.axis === "x" ? a.y + dy * ratio : a.x + dx * ratio;
+          if (ratio >= 0 && ratio <= 1 && other >= edge.min && other <= edge.max) {
+            const point = edge.axis === "x" ? { x: edge.value, y: other } : { x: other, y: edge.value };
+            const world = localToWorld(point.x, point.y, transform);
+            const normal = localToWorld(point.x + edge.nx, point.y + edge.ny, transform);
+            addSplash(world.x, world.y, normal.x - world.x, normal.y - world.y);
+            resetDrop(drop, false, true);
+            return true;
           }
         }
         return false;
       }
 
-      function drawRain() {
+      function drawRain(drops, foreground, transform) {
         ctx.lineCap = "round";
-        for (const drop of rain) {
-          const nextX = drop.x - drop.speed * .33;
+        for (const drop of drops) {
+          const nextX = drop.x - drop.speed * .35;
           const nextY = drop.y + drop.speed;
           ctx.globalAlpha = drop.alpha;
           ctx.strokeStyle = "#fff";
           ctx.lineWidth = drop.weight;
           ctx.beginPath();
           ctx.moveTo(drop.x, drop.y);
-          ctx.lineTo(drop.x - drop.length * .33, drop.y + drop.length);
+          ctx.lineTo(drop.x - drop.length * .35, drop.y + drop.length);
           ctx.stroke();
-          if (!hitCard(drop, nextX, nextY)) {
+          if (!foreground || !collide(drop, nextX, nextY, transform)) {
             drop.x = nextX;
             drop.y = nextY;
-            if (drop.y > height + 40 || drop.x < -60) resetDrop(drop);
+            if (drop.y > height + 48 || drop.x < -72) resetDrop(drop, false, foreground);
           }
         }
       }
 
-      function drawDust(now) {
+      function drawCardParticles(particles, transform, now, isText) {
         ctx.lineCap = "round";
-        for (const grain of cardDust) {
-          const flicker = .65 + Math.sin(now * .002 + grain.phase) * .25;
-          ctx.globalAlpha = grain.alpha * flicker;
+        for (const particle of particles) {
+          const wobble = Math.sin(now * .0023 + particle.phase) * .8;
+          const world = localToWorld(particle.x + wobble, particle.y, transform);
+          ctx.globalAlpha = particle.alpha * (.67 + Math.sin(now * .003 + particle.phase) * .25);
           ctx.strokeStyle = "#fff";
-          ctx.lineWidth = grain.size;
+          ctx.lineWidth = isText ? particle.size * 1.45 : particle.size;
           ctx.beginPath();
-          ctx.moveTo(grain.x, grain.y);
-          ctx.lineTo(grain.x + Math.cos(grain.angle) * grain.size * 3, grain.y + Math.sin(grain.angle) * grain.size * 3);
+          ctx.moveTo(world.x, world.y);
+          ctx.lineTo(world.x + (isText ? rand(-1.2, 1.2) : Math.cos(particle.angle) * particle.size * 3), world.y + (isText ? rand(-1.2, 1.2) : Math.sin(particle.angle) * particle.size * 3));
           ctx.stroke();
         }
       }
 
       function drawSplashes() {
         for (let i = splash.length - 1; i >= 0; i--) {
-          const particle = splash[i];
-          particle.x += particle.vx;
-          particle.y += particle.vy;
-          particle.vy += .055;
-          particle.life -= 1;
-          if (particle.life <= 0) {
-            splash.splice(i, 1);
-            continue;
-          }
-          ctx.globalAlpha = (particle.life / particle.maxLife) * .9;
+          const p = splash[i];
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += .065;
+          p.life -= 1;
+          if (p.life <= 0) { splash.splice(i, 1); continue; }
+          ctx.globalAlpha = (p.life / p.maxLife) * .95;
           ctx.strokeStyle = "#fff";
-          ctx.lineWidth = particle.size;
+          ctx.lineWidth = p.size;
           ctx.beginPath();
-          ctx.moveTo(particle.x, particle.y);
-          ctx.lineTo(particle.x - particle.vx * 1.7, particle.y - particle.vy * 1.7);
+          ctx.moveTo(p.x, p.y);
+          ctx.lineTo(p.x - p.vx * 1.8, p.y - p.vy * 1.8);
           ctx.stroke();
         }
       }
 
-      function drawMark() {
-        const size = Math.max(9, Math.min(width, height) * .0105);
-        ctx.save();
-        ctx.globalAlpha = .58;
-        ctx.fillStyle = "#fff";
-        ctx.font = "600 " + size + "px ui-monospace, SFMono-Regular, Menlo, monospace";
-        ctx.textAlign = "center";
-        ctx.letterSpacing = "0.2em";
-        ctx.fillText("NEXTERIAL APPLICATION", width * .5, card.bottom - size * 2.4);
-        ctx.restore();
-      }
-
       function frame(now) {
+        const transform = cardTransform(now);
         ctx.globalAlpha = 1;
         ctx.fillStyle = "#000";
         ctx.fillRect(0, 0, width, height);
-        drawRain();
-        drawDust(now);
+        drawRain(backRain, false, transform);
+        drawCardParticles(cardDust, transform, now, false);
+        drawCardParticles(textDust, transform, now, true);
+        drawRain(frontRain, true, transform);
         drawSplashes();
-        drawMark();
         requestAnimationFrame(frame);
       }
 
