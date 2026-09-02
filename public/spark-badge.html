@@ -489,7 +489,10 @@ const CAP_F = 40000, CAP_R = 1400, CAP_W = 1600;
 function applyParticleCounts(){
   NF = Math.min(CAP_F, Math.max(1, Math.round(BASE_NF * runtimeControls.particleAmount)));
   NR = Math.min(CAP_R, Math.max(0, Math.round(BASE_NR * runtimeControls.rainAmount)));
-  NW = Math.min(CAP_W, Math.max(1, Math.round(BASE_NW * runtimeControls.particleAmount)));
+  // This scene intentionally has no water pass.  Keeping the lower bound at
+  // zero is important: on slower browsers the adaptive governor runs later
+  // and must never resurrect a water particle from an empty base count.
+  NW = Math.min(CAP_W, Math.max(0, Math.round(BASE_NW * runtimeControls.particleAmount)));
 }
 
 addEventListener('message', event => {
@@ -661,7 +664,7 @@ function layout(){
   for (let i = 0; i < starCount; i++) STARS.push({
     x: starRnd()*VW, y: starRnd()*VH,
     size: 0.55 + starRnd()*1.35,
-    alpha: 0.14 + starRnd()*0.60,
+    alpha: 0.30 + starRnd()*0.65,
     phase: starRnd()*TAU,
   });
 
@@ -857,7 +860,7 @@ function frame(ts){
   frames++; acc += dt;
   if (frames >= 40){
     const avg = acc/frames; frames = 0; acc = 0;
-    if (avg > 0.022){ slowRun++; if (slowRun >= 2){ NF = Math.max(1100, (NF*0.85)|0); NR = Math.max(240, (NR*0.9)|0); NW = Math.max(260, (NW*0.9)|0); slowRun = 0; } }
+    if (avg > 0.022){ slowRun++; if (slowRun >= 2){ NF = Math.max(1100, (NF*0.85)|0); NR = Math.max(36, (NR*0.9)|0); NW = NW ? Math.max(260, (NW*0.9)|0) : 0; slowRun = 0; } }
     else slowRun = 0;
   }
 }
