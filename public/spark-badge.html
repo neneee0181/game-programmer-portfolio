@@ -101,6 +101,7 @@ function curlAt(x, y, out){
  * ------------------------------------------------------------------ */
 const MW = 768;                      // mask width == one art unit
 const AY0 = -0.55, AH = 1.55;        // slab covers art y from -0.55 to 1.00, so
+const MH = Math.round(MW * AH);      // the lanyard has somewhere to exist above
 const PHOTO_X0 = 0.512;
 const PHOTO_Y0 = 0.648;
 const PHOTO_W = 0.146;
