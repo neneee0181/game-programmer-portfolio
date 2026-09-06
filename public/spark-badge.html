@@ -101,7 +101,16 @@ function curlAt(x, y, out){
  * ------------------------------------------------------------------ */
 const MW = 768;                      // mask width == one art unit
 const AY0 = -0.55, AH = 1.55;        // slab covers art y from -0.55 to 1.00, so
-const MH = Math.round(MW * AH);      // the lanyard has somewhere to exist above
+const PHOTO_X0 = 0.512;
+const PHOTO_Y0 = 0.648;
+const PHOTO_W = 0.146;
+const PHOTO_H = 0.188;
+const PHOTO_R = 0.010;
+
+const PHOTO_IMG = new Image();
+PHOTO_IMG.src = './profile-photo.png?v=' + Date.now();
+let photoLoaded = false;
+PHOTO_IMG.onload = () => { photoLoaded = true; };
 
 /* Per-region emission: [ink, drift].
    ink   — share of the frame's light this edge gets.
@@ -378,29 +387,15 @@ function buildMasks(){
 
   frameRR(0.342, 0.420, 0.658, 0.600, 0.007, 0.005, 'window');   // portrait window
 
-  cutLine(0.342, 0.626, 0.556, 0.626, 0.0040, 'meta');     // date / venue line
-  cutRR(0.342, 0.648, 0.604, 0.690, 0.005, 'name');        // name plate
-  cutLine(0.342, 0.708, 0.540, 0.708, 0.0040, 'meta');     // role line
-  cutLine(0.342, 0.744, 0.658, 0.744, 0.0045, 'rule');     // divider
-  cutRR(0.342, 0.764, 0.470, 0.802, 0.019, 'tier');        // access-tier pill
-  cutLine(0.342, 0.822, 0.450, 0.822, 0.0038, 'meta');     // serial
+  cutLine(0.342, 0.624, 0.658, 0.624, 0.0040, 'meta');     // header line
+  cutRR(0.342, 0.648, 0.488, 0.690, 0.005, 'name');        // name plate
+  cutLine(0.342, 0.708, 0.488, 0.708, 0.0040, 'meta');     // role line
+  cutLine(0.342, 0.744, 0.488, 0.744, 0.0045, 'rule');     // divider
+  cutRR(0.342, 0.764, 0.466, 0.802, 0.019, 'tier');        // access-tier pill
+  cutLine(0.342, 0.822, 0.446, 0.822, 0.0038, 'meta');     // serial
 
-  /* ---- data block ---- */
-  (() => {
-    const x0 = 0.540, y0 = 0.752, m = 0.0197;              // 6 modules across, 5 down
-    frameRR(x0, y0, x0+m*6, y0+m*5, 0.004, 0.0038, 'qr');
-    for (const [cxm, cym] of [[0,0],[4,0],[0,3]]){          // finder squares
-      const fx0 = x0 + (cxm+0.35)*m, fy0 = y0 + (cym+0.35)*m;
-      frameRR(fx0, fy0, fx0+m*1.3, fy0+m*1.3, 0.0018, 0.0034, 'qr');
-    }
-    const r = mulberry32(0x51DE);
-    for (let gy = 0; gy < 5; gy++) for (let gx = 0; gx < 6; gx++){
-      if ((gx < 2 && gy < 2) || (gx > 3 && gy < 2) || (gx < 2 && gy > 2)) continue;
-      if (r() > 0.46) continue;
-      const mx = x0 + (gx+0.28)*m, my = y0 + (gy+0.28)*m;
-      cutRR(mx, my, mx+m*0.62, my+m*0.62, 0.0012, 'qr');
-    }
-  })();
+  // profile photo frame on the bottom right
+  frameRR(PHOTO_X0, PHOTO_Y0, PHOTO_X0 + PHOTO_W, PHOTO_Y0 + PHOTO_H, PHOTO_R, 0.0042, 'window');
 
   /* ---- both messages are carved from the credential mask, so they reform
          only through the same ember material as the badge itself. ---- */
@@ -849,6 +844,8 @@ function render(){
   ctx.restore();
   ctx.filter = 'none';
 
+  drawPhoto();
+
   for (let i = 0; i < NB; i++) paths[i] = new Path2D();
   for (let i = 0; i < NF; i++) strand(FUR, i, 0);
   for (let i = 0; i < NW; i++) strand(WAT, i, 2);
@@ -859,6 +856,80 @@ function render(){
   for (let i = 0; i < NR; i++) if (RAIN.pin[i]) strand(RAIN, i, 1);
   flush('#8dbbff');
   drawImpacts();
+}
+
+function drawPhoto(){
+  if (!photoLoaded || !ART.s) return;
+
+  const S = ART.s;
+  const x0 = PHOTO_X0 * S, y0 = PHOTO_Y0 * S;
+  const w = PHOTO_W * S, h = PHOTO_H * S;
+  const r = PHOTO_R * S;
+
+  ctx.save();
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.translate(ART.x, ART.y);
+
+  // tilt transform: identical to card coordinate space
+  const SC = 1.30;
+  ctx.translate(0.500*S, 0.862*S); ctx.scale(SC, SC); ctx.translate(-0.500*S, -0.862*S);
+  ctx.translate(0.500*S, 0.300*S); ctx.rotate(-0.048); ctx.translate(-0.500*S, -0.300*S);
+
+  const roundRectPath = (px, py, pw, ph, pr) => {
+    ctx.beginPath();
+    ctx.moveTo(px + pr, py);
+    ctx.arcTo(px + pw, py, px + pw, py + ph, pr);
+    ctx.arcTo(px + pw, py + ph, px, py + ph, pr);
+    ctx.arcTo(px, py + ph, px, py, pr);
+    ctx.arcTo(px, py, px + pw, py, pr);
+    ctx.closePath();
+  };
+
+  // 1. Photo slot backdrop
+  roundRectPath(x0, y0, w, h, r);
+  ctx.fillStyle = 'rgba(6, 16, 36, 0.92)';
+  ctx.fill();
+
+  // 2. Photo image clipped to rounded rect
+  ctx.save();
+  roundRectPath(x0, y0, w, h, r);
+  ctx.clip();
+  ctx.drawImage(PHOTO_IMG, x0, y0, w, h);
+
+  // 3. Subtle glass/acrylic reflection
+  const glassGrad = ctx.createLinearGradient(x0, y0, x0 + w, y0 + h);
+  glassGrad.addColorStop(0, 'rgba(180, 225, 255, 0.22)');
+  glassGrad.addColorStop(0.35, 'rgba(120, 190, 255, 0.05)');
+  glassGrad.addColorStop(0.65, 'rgba(0, 0, 0, 0)');
+  glassGrad.addColorStop(1, 'rgba(30, 80, 160, 0.15)');
+  ctx.fillStyle = glassGrad;
+  ctx.fill();
+  ctx.restore();
+
+  // 4. Photo frame border
+  roundRectPath(x0, y0, w, h, r);
+  ctx.strokeStyle = 'rgba(110, 185, 255, 0.75)';
+  ctx.lineWidth = Math.max(1.2, 0.0024 * S);
+  ctx.stroke();
+
+  // 5. Corner brackets
+  ctx.strokeStyle = 'rgba(210, 240, 255, 0.95)';
+  ctx.lineWidth = Math.max(1.6, 0.0034 * S);
+  const cLen = 0.016 * S;
+  ctx.beginPath();
+  ctx.moveTo(x0, y0 + cLen); ctx.arcTo(x0, y0, x0 + cLen, y0, r); ctx.lineTo(x0 + cLen, y0);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x0 + w - cLen, y0); ctx.arcTo(x0 + w, y0, x0 + w, y0 + cLen, r); ctx.lineTo(x0 + w, y0 + cLen);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x0 + w, y0 + h - cLen); ctx.arcTo(x0 + w, y0 + h, x0 + w - cLen, y0 + h, r); ctx.lineTo(x0 + w - cLen, y0 + h);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x0 + cLen, y0 + h); ctx.arcTo(x0, y0 + h, x0, y0 + h - cLen, r); ctx.lineTo(x0, y0 + h - cLen);
+  ctx.stroke();
+
+  ctx.restore();
 }
 
 function drawImpacts(){
